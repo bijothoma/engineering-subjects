@@ -18,3 +18,4 @@ button.show:hover{background:var(--acc);color:var(--bg)}
 .sec{font-weight:700;margin-top:30px;font-size:1.15rem}.meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--mut)}
 .idx a{display:block;padding:8px 12px;margin:6px 0;background:var(--card);border:1px solid var(--bd);border-radius:8px;text-decoration:none}
 @media print{.show,.score{display:none}.ans{display:block!important}}
+.scorecard{position:fixed;top:10px;right:12px;z-index:10;background:var(--card);border:2px solid var(--acc);border-radius:10px;padding:4px 14px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.18);line-height:1.2}.scorecard small{display:block;color:var(--mut);font-size:.7rem}.scorecard b{font-size:1.3rem}
