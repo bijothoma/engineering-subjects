@@ -1,0 +1,159 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>T2 — Greedy Algorithms</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>T2 — Greedy Algorithms</h1>
+<p class="sub">Greedy paradigm, Maximum Independent Set in trees, Interval Scheduling, Fractional Knapsack, Minimum Spanning Trees, Huffman Coding. Ref: DPV Ch.5; CLRS 4e Ch.15 and Ch.21; KT Ch.4; Erickson Ch.4.</p>
+
+<h2>1. The greedy strategy and design paradigm</h2>
+<div class="box"><b>Idea.</b> Build a solution piece by piece; at each step make the choice that looks best right now (locally optimal) and never undo it. The result is globally optimal only for problems with special structure.</div>
+<p>Two properties justify a greedy algorithm:</p>
+<ul>
+<li><b>Greedy-choice property:</b> some optimal solution contains the greedy first choice.</li>
+<li><b>Optimal substructure:</b> after making that choice, the rest of the problem is a smaller instance of the same problem, whose optimal solution combines with the choice to give an optimal whole.</li>
+</ul>
+<h3>Proof techniques</h3>
+<ul>
+<li><b>Exchange argument:</b> take any optimal solution O. Show you can swap one of its elements for the greedy choice without making it worse. Repeat until O equals the greedy solution.</li>
+<li><b>Greedy stays ahead:</b> show by induction that after k steps the greedy partial solution is at least as good as any other partial solution of k steps.</li>
+<li><b>Cut / structural argument</b> (used for MSTs).</li>
+</ul>
+<h3>Typical template</h3>
+<pre><code>Greedy(input):
+    sort candidates by a well-chosen key            // often O(n log n)
+    solution = empty
+    for each candidate c in that order:
+        if c is feasible with solution:
+            add c to solution
+    return solution</code></pre>
+<div class="box warn"><b>Pitfall.</b> A plausible greedy rule is not a proof. Always test against a counterexample (e.g. coin change with {1,3,4}, target 6: greedy gives 4+1+1 = 3 coins, optimum is 3+3 = 2 coins). Greedy differs from DP: it does not try all subproblem choices and never has overlapping subproblems to tabulate.</div>
+
+<h2>2. Interval scheduling</h2>
+<p><b>Problem.</b> Given n requests with start s<sub>i</sub> and finish f<sub>i</sub>, choose a maximum-size subset of pairwise compatible (non-overlapping) intervals. Intervals sharing only an endpoint are compatible.</p>
+<h3>Algorithm: earliest finish time first</h3>
+<pre><code>IntervalSchedule(s[1..n], f[1..n]):
+    sort intervals so that f[1] &lt;= f[2] &lt;= ... &lt;= f[n]
+    A = {1};  last = f[1]
+    for i = 2 to n:
+        if s[i] &gt;= last:
+            A = A + {i};  last = f[i]
+    return A</code></pre>
+<h3>Why other rules fail</h3>
+<table><tr><th>Rule</th><th>Counterexample</th></tr>
+<tr><td>Earliest start</td><td>(0,10),(1,2),(3,4),(5,6): picks 1, optimum 3</td></tr>
+<tr><td>Shortest interval</td><td>(0,5),(4,6),(5,10): picks (4,6), optimum 2 ((0,5),(5,10))</td></tr>
+<tr><td>Fewest conflicts</td><td>Known counterexamples with 11 intervals</td></tr></table>
+<h3>Correctness (greedy stays ahead)</h3>
+<p>Let greedy pick i<sub>1</sub>,...,i<sub>k</sub> and an optimal solution pick j<sub>1</sub>,...,j<sub>m</sub>, both ordered by time. Claim: f(i<sub>r</sub>) ≤ f(j<sub>r</sub>) for all r. Base: i<sub>1</sub> has the globally smallest finish. Step: j<sub>r+1</sub> starts after f(j<sub>r</sub>) ≥ f(i<sub>r</sub>), so it is a candidate when greedy picks i<sub>r+1</sub>, hence f(i<sub>r+1</sub>) ≤ f(j<sub>r+1</sub>). If m &gt; k, j<sub>k+1</sub> would still be compatible with greedy's last interval, a contradiction; so k ≥ m.</p>
+<h3>Worked example</h3>
+<p>Intervals (1,4),(3,5),(0,6),(5,7),(3,9),(5,9),(6,10),(8,11),(8,12),(2,14),(12,16). Sorted by finish: (1,4),(3,5),(0,6),(5,7),(3,9),(5,9),(6,10),(8,11),(8,12),(2,14),(12,16). Pick (1,4); skip (3,5),(0,6); pick (5,7); skip (3,9),(5,9),(6,10); pick (8,11); skip (8,12),(2,14); pick (12,16). Answer: 4 intervals. (Earliest start would pick (0,6),(6,10),(12,16) = only 3.)</p>
+<div class="box key"><b>Complexity:</b> O(n log n) for sorting + O(n) scan = O(n log n).</div>
+
+<h2>3. Fractional knapsack</h2>
+<p><b>Problem.</b> Items i with value v<sub>i</sub> and weight w<sub>i</sub>; capacity W. Any fraction x<sub>i</sub> ∈ [0,1] of an item may be taken. Maximise Σ x<sub>i</sub>v<sub>i</sub> subject to Σ x<sub>i</sub>w<sub>i</sub> ≤ W.</p>
+<pre><code>FractionalKnapsack(v, w, W):
+    sort items by v[i]/w[i] in decreasing order
+    remaining = W;  total = 0
+    for each item i in that order:
+        if w[i] &lt;= remaining:
+            take all: total += v[i];  remaining -= w[i]
+        else:
+            total += v[i] * remaining / w[i]     // fraction
+            break
+    return total</code></pre>
+<p><b>Correctness (exchange).</b> Suppose an optimal solution uses a unit of capacity on item j while a strictly denser item i is not used up. Replacing that unit of j by a unit of i raises the value, a contradiction. Hence all of the densest items must be fully used before any less dense one.</p>
+<p><b>Example.</b> (value,weight) = (60,10),(100,20),(120,30), W = 50. Ratios 6, 5, 4. Take items 1 and 2 (weight 30, value 160), then 20/30 of item 3 = 80. Total 240.</p>
+<div class="box key"><b>Complexity:</b> O(n log n) (sorting); O(n) is possible with weighted-median selection.</div>
+<div class="box warn"><b>Pitfall.</b> The same ratio rule is NOT optimal for 0/1 knapsack: for the items above with W = 50 greedy gives 160 (items 1 and 2) but the optimum is 220 (items 2 and 3). 0/1 knapsack needs DP (Topic 3).</div>
+
+<h2>4. Maximum Independent Set in trees</h2>
+<p><b>Definition.</b> An independent set is a set of vertices with no two adjacent. Finding a maximum one is NP-hard in general graphs, but easy for trees (and forests).</p>
+<pre><code>TreeMIS(T):
+    S = empty
+    while T has vertices:
+        pick a leaf u (degree &lt;= 1; isolated vertices count)
+        S = S + {u}
+        remove u and its neighbour (if any) from T   // forest may split
+    return S</code></pre>
+<p><b>Correctness (exchange).</b> Let ℓ be a leaf with neighbour p. If an optimal set O omits ℓ, then p ∈ O (else add ℓ, contradicting optimality). O − {p} + {ℓ} is still independent (ℓ's only neighbour is p) and has the same size. So some optimal set contains ℓ; remaining problem is the forest T − {ℓ, p}.</p>
+<p><b>Example.</b> Edges 1-2, 1-3, 1-4, 2-5, 2-6, 4-7. Leaves: 3,5,6,7. Pick 5 (delete 2); pick 6; pick 3 (delete 1); pick 7 (delete 4). S = {3,5,6,7}, size 4, which is optimal.</p>
+<div class="box key"><b>Complexity:</b> O(n) with degree counters / a queue of leaves (each vertex removed once). A DP alternative: for each vertex store best with and without it.</div>
+<div class="box warn"><b>Pitfall.</b> Picking a high-degree or internal vertex is not safe. The argument needs a degree-1 vertex; a general graph (e.g. a cycle) may have none, which is why this fails there.</div>
+
+<h2>5. Minimum Spanning Tree (MST)</h2>
+<p><b>Problem.</b> Connected undirected weighted graph G = (V,E). A spanning tree is an acyclic connected subgraph on all V (exactly |V|−1 edges). Find one with minimum total weight.</p>
+<h3>Key properties</h3>
+<div class="box key"><b>Cut property.</b> For any cut (S, V−S), a minimum-weight edge crossing the cut belongs to some MST (to every MST if it is the unique lightest).<br><b>Cycle property.</b> A strictly heaviest edge on any cycle belongs to no MST.<br>If all weights are distinct, the MST is unique.</div>
+<p><b>Proof of the cut property (exchange).</b> Let T be an MST and e the lightest edge across the cut, e ∉ T. Adding e to T creates a cycle, which must cross the cut again at some other edge e′. Then T − e′ + e is a spanning tree with weight ≤ that of T, so it is also an MST containing e.</p>
+
+<h3>Kruskal's algorithm</h3>
+<pre><code>Kruskal(G):
+    A = empty;  make-set(v) for every vertex v
+    sort edges by weight
+    for each edge (u,v) in sorted order:
+        if find(u) != find(v):
+            A = A + {(u,v)};  union(u,v)
+    return A</code></pre>
+<p>Union–find (disjoint sets) with union by rank and path compression gives near-constant amortised O(α(V)) per operation.</p>
+<p><b>Complexity:</b> sort O(E log E) = O(E log V); E find/union calls O(E α(V)). Total <b>O(E log V)</b>.</p>
+
+<h3>Prim's algorithm</h3>
+<pre><code>Prim(G, r):
+    for each v: key[v] = infinity, parent[v] = nil
+    key[r] = 0;  Q = priority queue of all vertices keyed by key
+    while Q not empty:
+        u = extract-min(Q)
+        for each neighbour v of u:
+            if v in Q and w(u,v) &lt; key[v]:
+                key[v] = w(u,v);  parent[v] = u    // decrease-key</code></pre>
+<table><tr><th>Implementation</th><th>Time</th></tr>
+<tr><td>Array / adjacency matrix</td><td>O(V²) (good for dense graphs)</td></tr>
+<tr><td>Binary heap</td><td>O(E log V)</td></tr>
+<tr><td>Fibonacci heap</td><td>O(E + V log V)</td></tr></table>
+
+<h3>Worked example (both algorithms)</h3>
+<p>Edges: A-B 4, A-C 2, B-C 1, B-D 5, C-D 8, C-E 10, D-E 2, D-F 6, E-F 3.</p>
+<p><b>Kruskal:</b> sorted order B-C 1 (take), A-C 2 (take), D-E 2 (take), E-F 3 (take), A-B 4 (reject, cycle A-B-C), B-D 5 (take, joins the two components). 5 edges, <b>weight 13</b>.</p>
+<p><b>Prim from A:</b> A-C 2 → C; B-C 1 → B; B-D 5 → D; D-E 2 → E; E-F 3 → F. Order A,C,B,D,E,F, weight 13. Same tree, as expected (all other edges are heavier on their cycles).</p>
+<div class="box warn"><b>Pitfalls.</b> Prim picks the lightest edge leaving the current tree (not the lightest overall edge). Kruskal must check cycles; adding an edge within a component is wrong. Dijkstra is NOT Prim: Dijkstra compares key = dist[u] + w, Prim just w. MST is unchanged by monotone transformations of weights (e.g. squaring positive weights) but shortest paths are not.</div>
+
+<h2>6. Huffman coding</h2>
+<p><b>Problem.</b> Given symbols with frequencies f(c), find a binary prefix code (no codeword is a prefix of another, so decoding is unambiguous) minimising the total length B = Σ f(c)·depth(c). Such a code corresponds to a full binary tree with symbols at leaves; left edge = 0, right edge = 1.</p>
+<pre><code>Huffman(C):                       // C = set of n symbols with frequencies
+    Q = min-priority queue of C by frequency
+    for i = 1 to n-1:
+        x = extract-min(Q);  y = extract-min(Q)
+        z = new node with f(z) = f(x) + f(y), left = x, right = y
+        insert(Q, z)
+    return extract-min(Q)         // root of the code tree</code></pre>
+<p><b>Correctness.</b> (1) Greedy choice: there is an optimal tree where the two least frequent symbols x,y are siblings at the deepest level (swap argument: moving a more frequent symbol deeper than a less frequent one never helps). (2) Optimal substructure: merging x,y into z with f(z) = f(x)+f(y) reduces cost by exactly f(x)+f(y), so an optimal tree for the reduced alphabet extends to an optimal tree for the original.</p>
+<h3>Worked example</h3>
+<p>a:5, b:9, c:12, d:13, e:16, f:45.</p>
+<table><tr><th>Step</th><th>Merge</th><th>New node</th></tr>
+<tr><td>1</td><td>a(5) + b(9)</td><td>14</td></tr>
+<tr><td>2</td><td>c(12) + d(13)</td><td>25</td></tr>
+<tr><td>3</td><td>14 + e(16)</td><td>30</td></tr>
+<tr><td>4</td><td>25 + 30</td><td>55</td></tr>
+<tr><td>5</td><td>f(45) + 55</td><td>100</td></tr></table>
+<p>Code lengths: f=1; c,d,e=3; a,b=4. Cost = 45·1 + (12+13+16)·3 + (5+9)·4 = 45 + 123 + 56 = <b>224</b> (equals the sum of internal node weights 14+25+30+55+100). A fixed-length 3-bit code costs 300.</p>
+<div class="box key"><b>Complexity:</b> n−1 merges, each O(log n) with a binary heap: <b>O(n log n)</b> (O(n) if frequencies are pre-sorted, using two queues). Tree has n leaves and n−1 internal nodes.</div>
+<div class="box warn"><b>Pitfalls.</b> Ties give different but equally optimal codes. Huffman gives the best <i>symbol-by-symbol</i> prefix code, not the best compressor overall (e.g. no benefit from repeated patterns). Skewed (Fibonacci-like) frequencies produce a chain of depth n−1.</div>
+
+<h2>7. Choosing a technique</h2>
+<table><tr><th>Clue in the problem</th><th>Likely technique</th></tr>
+<tr><td>Sort + one scan; exchange argument works</td><td>Greedy</td></tr>
+<tr><td>Items may be split</td><td>Greedy (fractional)</td></tr>
+<tr><td>Items all-or-nothing, weights arbitrary</td><td>DP (0/1 knapsack), greedy fails</td></tr>
+<tr><td>Connect all vertices at minimum cost</td><td>MST (Prim / Kruskal)</td></tr>
+<tr><td>Variable-length prefix-free code</td><td>Huffman</td></tr>
+<tr><td>Choices interact in many ways, greedy counterexample exists</td><td>DP or search</td></tr></table>
+
+<h2>Quick revision</h2>
+<ul>
+<li>Greedy = locally best, never reconsider; needs greedy-choice property + optimal substructure; prove by exchange or stays-ahead.</li>
+<li>Interval scheduling: sort by finish time, take if start ≥ last finish. O(n log n). Earliest start and shortest-first are wrong.</li>
+<li>Fractional knapsack: sort by v/w descending, split the last item. O(n log n). Greedy fails for 0/1.</li>
+<li>Tree MIS: repeatedly take a leaf, delete it and its neighbour. O(n). NP-hard on general graphs.</li>
+<li>MST: cut property (lightest crossing edge is safe), cycle property (heaviest cycle edge is out); MST has V−1 edges; unique if weights distinct.</li>
+<li>Kruskal: sort edges + union–find, O(E log V). Prim: grow a tree with a heap, O(E log V) (O(V²) with array, O(E + V log V) with Fibonacci heap).</li>
+<li>Huffman: repeatedly merge two least frequent nodes; n−1 merges; O(n log n); cost = sum of internal node weights; Fibonacci frequencies give depth n−1.</li>
+<li>Counterexample habit: coin change {1,3,4} for 6; 0/1 knapsack ratio greedy.</li>
+</ul>
+</main></body></html>

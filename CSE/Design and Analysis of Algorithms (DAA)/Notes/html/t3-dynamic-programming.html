@@ -1,0 +1,148 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>T3 Dynamic Programming</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>T3 — Dynamic Programming</h1>
+<p class="sub">Principles of DP, WIS on paths, weighted interval scheduling, paths in DAGs, LIS, edit distance, 0/1 knapsack, matrix chain, rod cutting, optimal BST. Ref: DPV Ch.6, CLRS Ch.14, KT Ch.6, Erickson Ch.3.</p>
+
+<h2>1. Principles of dynamic programming</h2>
+<div class="box"><b>Idea.</b> Solve a problem by expressing it through a recurrence over a small family of subproblems, solving each distinct subproblem once, and storing the result. DP = recursion + reuse of answers (equivalently: shortest/longest path in a DAG of subproblems).</div>
+<h3>Two requirements</h3>
+<ul>
+<li><b>Optimal substructure</b>: an optimal solution contains optimal solutions to subproblems (cut-and-paste argument: if a sub-solution were improvable, improve the whole).</li>
+<li><b>Overlapping subproblems</b>: the number of distinct subproblems is small (polynomial) although the recursion tree is huge.</li>
+</ul>
+<h3>Recipe</h3>
+<ol>
+<li>Define the state precisely (what does OPT(i, j, ...) mean?).</li>
+<li>Write the recurrence with base cases, covering every choice for the last decision.</li>
+<li>Choose an evaluation order (topological order of the subproblem DAG) or memoise.</li>
+<li>Read off the answer; store choices to reconstruct the solution (traceback).</li>
+<li>Time = (#states) x (work per state). Space = table size (often reducible).</li>
+</ol>
+<h3>Memoisation vs tabulation</h3>
+<table><tr><th></th><th>Top-down (memo)</th><th>Bottom-up (table)</th></tr>
+<tr><td>Style</td><td>recursion + cache</td><td>loops in dependency order</td></tr>
+<tr><td>Subproblems solved</td><td>only those reached</td><td>all</td></tr>
+<tr><td>Overhead</td><td>recursion stack</td><td>none; easy space optimisation</td></tr></table>
+<pre><code>Fib(n): // memoised
+  if n &lt;= 1 return n
+  if memo[n] undefined: memo[n] = Fib(n-1) + Fib(n-2)
+  return memo[n]</code></pre>
+<p>Naive Fib is T(n)=T(n-1)+T(n-2)+1 = Θ(φⁿ); memoised: n states, O(1) each, so O(n).</p>
+<div class="box warn"><b>Pitfalls.</b> Memo key missing a parameter (wrong answers); state that does not make subproblems independent; confusing DP with greedy (greedy commits without trying alternatives); forgetting base cases.</div>
+
+<h2>2. Maximum Weight Independent Set on a path</h2>
+<div class="box"><b>Problem.</b> Path v1..vn with weights w_i ≥ 0. Choose pairwise non-adjacent vertices of maximum total weight.</div>
+<p>Let M[i] = optimum for prefix v1..vi. Either vi is out (M[i-1]) or vi is in, which excludes v(i-1) (M[i-2] + w_i).</p>
+<pre><code>M[0]=0; M[1]=w1
+for i = 2..n: M[i] = max(M[i-1], M[i-2] + w_i)
+// traceback: i=n; while i&gt;=1: if M[i-1] &gt;= M[i-2]+w_i then i-- else {take i; i -= 2}</code></pre>
+<p><b>Correctness</b>: induction on i using the two exhaustive cases. <b>Time/space</b>: O(n), O(n) (O(1) if only the value is needed).</p>
+<p><b>Example</b>: w = 4,1,1,9,3,6 gives M = 0,4,4,5,13,13,19; chosen set {v1, v4, v6} = 19.</p>
+<div class="box warn"><b>Pitfall.</b> Greedy (pick the heaviest, delete neighbours) fails: path 3,4,3 has optimum 6, greedy gets 4.</div>
+
+<h2>3. Weighted Interval Scheduling</h2>
+<div class="box"><b>Problem.</b> Jobs j with start s_j, finish f_j, value v_j. Choose pairwise non-overlapping jobs maximising total value (the unweighted case is solved by greedy, the weighted one is not).</div>
+<p>Sort by finish time f1 ≤ ... ≤ fn. p(j) = largest i&lt;j with f_i ≤ s_j (0 if none). Then</p>
+<pre><code>OPT(0)=0
+OPT(j) = max( v_j + OPT(p(j)),  OPT(j-1) )</code></pre>
+<pre><code>sort by finish; compute p(j) by binary search
+for j = 1..n: OPT[j] = max(v[j] + OPT[p[j]], OPT[j-1])</code></pre>
+<p><b>Correctness</b>: if j is used, all other chosen jobs are compatible with j and finish before it, i.e. lie among 1..p(j) (and an optimal choice there is OPT(p(j))); otherwise the answer is OPT(j-1). <b>Time</b>: O(n log n) sort + O(n log n) for p + O(n) DP = O(n log n).</p>
+<p><b>Example</b> (start,finish,value) sorted: (1,4,3),(3,5,2),(0,6,4),(4,7,5),(3,8,6),(5,9,3),(6,10,2),(8,11,4). p = 0,0,0,1,0,2,3,5; OPT = 3,3,4,8,8,8,8,12 (jobs 1,4,8).</p>
+<div class="box warn"><b>Pitfall.</b> Unmemoised recursion is exponential. Use p(j) not j-1 when job j is chosen.</div>
+
+<h2>4. Shortest and longest paths in DAGs</h2>
+<div class="box"><b>Idea.</b> In a DAG, process vertices in topological order; when v is processed, all of its in-neighbours are final.</div>
+<pre><code>topologically sort G (DFS, O(V+E))
+dist[s]=0, dist[others] = +inf  (use -inf and max for longest)
+for u in topological order:
+  for each edge (u,v,w): dist[v] = min(dist[v], dist[u] + w)   // max for longest</code></pre>
+<p>Time Θ(V+E); handles negative weights; longest path = same with max (or negate weights), which is easy only because there are no cycles (in general graphs longest simple path is NP-hard). Many DPs are paths in a subproblem DAG: LIS, edit distance, and so on.</p>
+<p><b>Example</b>: edges S→A 3, S→B 2, A→C 4, A→D 1, B→C 1, B→D 6, C→T 2, D→T 3. Order S,A,B,C,D,T. Shortest: A=3,B=2,C=3,D=4,T=5. Longest: A=3,B=2,C=7,D=8,T=11 (S-B-D-T).</p>
+<div class="box warn"><b>Pitfall.</b> Dijkstra is unnecessary here and is wrong for negative edges; the order of processing must be topological.</div>
+
+<h2>5. Longest Increasing Subsequence (LIS)</h2>
+<div class="box"><b>Problem.</b> Given a[1..n], find the longest subsequence with strictly increasing values.</div>
+<pre><code>for j = 1..n:
+  L[j] = 1 + max{ L[i] : i&lt;j, a[i]&lt;a[j] }   (max of empty set = 0)
+answer = max_j L[j]</code></pre>
+<p>L[j] = length of the longest increasing subsequence ending at j (a longest path in the DAG with edges i→j for i&lt;j, a[i]&lt;a[j]). <b>Time</b> O(n²), space O(n); keep a predecessor array for traceback.</p>
+<p><b>Faster</b> O(n log n): keep tails[k] = smallest last value of an increasing subsequence of length k; tails is increasing, so each a[j] is placed with binary search (replace the first tail ≥ a[j], or append).</p>
+<p><b>Example</b>: 5,2,8,6,3,6,9,7 gives L = 1,1,2,2,2,3,4,4; LIS length 4 (2,3,6,9).</p>
+<div class="box warn"><b>Pitfall.</b> The answer is max over all L[j], not L[n]. Subsequence is not contiguous; the tails array is not itself an LIS.</div>
+
+<h2>6. Edit Distance</h2>
+<div class="box"><b>Problem.</b> Minimum number of insertions, deletions and substitutions turning x[1..m] into y[1..n].</div>
+<p>D[i][j] = distance between prefixes x[1..i], y[1..j].</p>
+<pre><code>D[i][0]=i; D[0][j]=j
+D[i][j] = min( D[i-1][j] + 1,            // delete x_i
+               D[i][j-1] + 1,            // insert y_j
+               D[i-1][j-1] + (x_i != y_j) )  // match / substitute</code></pre>
+<p>Answer D[m][n]. <b>Time</b> O(mn); <b>space</b> O(mn), or O(min(m,n)) for the value only (Hirschberg recovers the alignment in linear space). Traceback from (m,n) gives the alignment. The grid is a DAG whose paths are alignments.</p>
+<p><b>Example</b> CAT to CUT: row 0: 0 1 2 3; C: 1 0 1 2; A: 2 1 1 2; T: 3 2 2 1. Distance 1. SUNDAY to SATURDAY = 3.</p>
+<div class="box warn"><b>Pitfall.</b> Wrong base row/column; adding 1 on a match; confusing with LCS (LCS allows only insert/delete).</div>
+
+<h2>7. 0/1 Knapsack</h2>
+<div class="box"><b>Problem.</b> Items with weights w_i and values v_i, capacity W. Choose a subset of total weight ≤ W maximising value; each item at most once.</div>
+<pre><code>K[0][c]=0 for all c
+for i=1..n: for c=0..W:
+  K[i][c] = K[i-1][c]
+  if w_i &lt;= c: K[i][c] = max(K[i][c], K[i-1][c-w_i] + v_i)
+answer K[n][W]</code></pre>
+<p><b>Time/space</b> O(nW); one row suffices if c runs downwards. This is <b>pseudo-polynomial</b>: W is exponential in its bit length log W; the problem is NP-hard in general. Unbounded knapsack uses K[c] = max(K[c-w_i]+v_i).</p>
+<p><b>Example</b>: W=7, items (w,v) = (1,1),(3,4),(4,5),(5,7). Last row (c=0..7): 0,1,1,4,5,7,8,9; optimum 9 with weights 3+4.</p>
+<div class="box warn"><b>Pitfalls.</b> Ratio greedy fails (W=50: (10,60),(20,100),(30,120) greedy 160, optimal 220); ascending c loop in 1D version reuses items; O(nW) is not polynomial.</div>
+
+<h2>8. Matrix Chain Multiplication</h2>
+<div class="box"><b>Problem.</b> Matrices A1..An, Ai of size p(i-1) x p(i). Choose the parenthesisation minimising scalar multiplications (multiplying a x b by b x c costs abc).</div>
+<pre><code>m[i][i]=0
+for len=2..n: for i=1..n-len+1:
+  j=i+len-1; m[i][j]=inf
+  for k=i..j-1:
+    q = m[i][k] + m[k+1][j] + p[i-1]*p[k]*p[j]
+    if q &lt; m[i][j]: m[i][j]=q; s[i][j]=k</code></pre>
+<p>Optimal substructure: the last multiplication splits at some k, and each side must itself be optimal. <b>Time</b> Θ(n³), <b>space</b> Θ(n²). Number of parenthesisations is the Catalan number C(n-1), exponential (14 for 5 matrices). Use s[][] to print the parenthesisation.</p>
+<p><b>Example</b> p = 10,20,30,40,30: m[1,2]=6000, m[2,3]=24000, m[3,4]=36000, m[1,3]=18000, m[2,4]=48000, m[1,4]=30000 for ((A1A2)A3)A4.</p>
+<div class="box warn"><b>Pitfall.</b> This only chooses the order; the matrices themselves are not multiplied in the DP. Loop by increasing chain length so smaller intervals are ready.</div>
+
+<h2>9. Rod Cutting</h2>
+<div class="box"><b>Problem.</b> Rod of length n, price p_i for a piece of length i. Cut to maximise total revenue.</div>
+<pre><code>r[0]=0
+for j=1..n: r[j] = max over i=1..j of ( p[i] + r[j-i] )</code></pre>
+<p>Time Θ(n²), space Θ(n); the naive recursion has 2^(n-1) cut patterns. Store the first cut s[j] for reconstruction. It is an unbounded knapsack with weight = length.</p>
+<p><b>Example</b> prices 1,5,8,9,10,17,17,20: r = 0,1,5,8,10,13,17,18,22; r(8)=22 (2+6). Prices 2,5,7,8: r(4)=10 (2+2).</p>
+<div class="box warn"><b>Pitfall.</b> Selling uncut or the best price-per-unit piece is not always optimal; cutting cost, if any, must be subtracted per cut.</div>
+
+<h2>10. Optimal Binary Search Trees</h2>
+<div class="box"><b>Problem.</b> Sorted keys k1&lt;...&lt;kn with search probabilities p_i. Build the BST minimising expected search cost Σ p_i (depth_i + 1).</div>
+<pre><code>w(i,j) = p_i + ... + p_j
+e(i,i-1) = 0
+e(i,j) = min over r=i..j of ( e(i,r-1) + e(r+1,j) ) + w(i,j)
+fill by increasing j-i; store root[i][j]=r</code></pre>
+<p>Hanging two subtrees under root r pushes every key one level down, hence + w(i,j). <b>Time</b> O(n³) (O(n²) with Knuth's monotonicity root(i,j-1) ≤ root(i,j) ≤ root(i+1,j)), space O(n²). The general version adds probabilities q_i for unsuccessful searches in the dummy leaves.</p>
+<p><b>Example</b> p = 0.34, 0.08, 0.58: optimum root k3, then k1, then k2 gives 0.58 + 2(0.34) + 3(0.08) = 1.5; the balanced tree with root k2 costs 1.92.</p>
+<div class="box warn"><b>Pitfall.</b> Highest-probability key as root is not optimal in general; cost is not the sum of just subtree costs, w(i,j) must be added.</div>
+
+<h2>Complexity summary</h2>
+<table><tr><th>Problem</th><th>States</th><th>Time</th></tr>
+<tr><td>WIS on path</td><td>n</td><td>O(n)</td></tr>
+<tr><td>Weighted interval scheduling</td><td>n</td><td>O(n log n)</td></tr>
+<tr><td>DAG paths</td><td>V</td><td>O(V+E)</td></tr>
+<tr><td>LIS</td><td>n</td><td>O(n²) / O(n log n)</td></tr>
+<tr><td>Edit distance</td><td>mn</td><td>O(mn)</td></tr>
+<tr><td>0/1 knapsack</td><td>nW</td><td>O(nW) pseudo-poly</td></tr>
+<tr><td>Matrix chain</td><td>n²</td><td>O(n³)</td></tr>
+<tr><td>Rod cutting</td><td>n</td><td>O(n²)</td></tr>
+<tr><td>Optimal BST</td><td>n²</td><td>O(n³) / O(n²) Knuth</td></tr></table>
+
+<div class="box key"><h2>Quick revision</h2>
+<ul>
+<li>DP needs optimal substructure + overlapping subproblems; time = #states x work per state.</li>
+<li>Memoisation = top-down cache; tabulation = bottom-up in topological order.</li>
+<li>WIS path: M[i]=max(M[i-1], M[i-2]+w_i). Weighted intervals: OPT(j)=max(v_j+OPT(p(j)), OPT(j-1)), O(n log n).</li>
+<li>DAG shortest/longest path: one pass in topological order, O(V+E).</li>
+<li>LIS: L[j]=1+max L[i]; O(n²), or O(n log n) with tails + binary search.</li>
+<li>Edit distance: three-way min, O(mn); knapsack: O(nW) pseudo-polynomial, row i-1 for 0/1.</li>
+<li>Matrix chain O(n³), Catalan many parenthesisations; rod cutting O(n²); optimal BST O(n³), add w(i,j).</li>
+<li>Greedy fails on weighted intervals, 0/1 knapsack, WIS.</li>
+</ul></div>
+</main></body></html>

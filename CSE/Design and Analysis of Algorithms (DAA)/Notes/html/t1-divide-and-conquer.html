@@ -1,0 +1,183 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>T1 — Algorithmic Foundations and Divide &amp; Conquer</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>T1 — Algorithmic Foundations and Divide &amp; Conquer</h1>
+<p class="sub">CS3003E DAA · Binary search, recursion, D&amp;C, sorting bounds, selection, exponentiation, matrix multiplication, maximum subarray, inversions, closest pair. Refs: CLRS Ch.2–4, 7, 8, 9; DPV Ch.2; Kleinberg–Tardos Ch.5; Levitin Ch.4–5.</p>
+
+<h2>1. Recursion and recurrences (foundation)</h2>
+<div class="box"><b>Recursive problem solving.</b> Express the answer for input of size n using answers for smaller instances of the same problem, plus a base case. Correctness is proved by induction on the size; running time is a recurrence.</div>
+<p><b>Divide and Conquer (D&amp;C):</b> (1) Divide into a subproblems of size n/b; (2) Conquer recursively; (3) Combine in f(n) time. So T(n) = a·T(n/b) + f(n).</p>
+<h3>Solving recurrences</h3>
+<ul>
+<li><b>Recursion tree:</b> level i has a^i nodes each of cost f(n/b^i); sum the levels (depth log_b n).</li>
+<li><b>Substitution:</b> guess the form, prove by induction (check constants and the base case).</li>
+<li><b>Master theorem</b> (T(n)=aT(n/b)+Θ(n^d), a≥1, b&gt;1): compare d with log_b a.</li>
+</ul>
+<table><tr><th>Case</th><th>Condition</th><th>Result</th></tr>
+<tr><td>Leaves dominate</td><td>d &lt; log_b a</td><td>Θ(n^(log_b a))</td></tr>
+<tr><td>Balanced</td><td>d = log_b a</td><td>Θ(n^d log n)</td></tr>
+<tr><td>Root dominates</td><td>d &gt; log_b a</td><td>Θ(n^d)</td></tr></table>
+<p>General form (CLRS): f(n) = Θ(n^(log_b a) · log^k n) gives Θ(n^(log_b a) · log^(k+1) n) for k ≥ 0.</p>
+<p><b>Worked example.</b> T(n)=3T(n/2)+n: log_2 3 ≈ 1.585 &gt; 1, so T(n)=Θ(n^1.585). T(n)=2T(n/2)+n log n: Θ(n log² n) (k=1 case). T(n)=T(n-1)+n is not master-form: unrolling gives n(n+1)/2 = Θ(n²).</p>
+<div class="box warn"><b>Pitfalls.</b> Master theorem needs equal-size subproblems and polynomial gap between f(n) and n^(log_b a); T(n)=2T(n/2)+n/log n is not covered. Naive Fibonacci, T(n)=T(n-1)+T(n-2)+1, is Θ(φ^n), exponential, because subproblems overlap (motivation for DP).</div>
+
+<h2>2. Binary search and its variants</h2>
+<p><b>Idea.</b> On a sorted array, compare with the middle element and discard half. Invariant: if the key exists, it lies in A[lo..hi].</p>
+<pre><code>BinarySearch(A, n, x):
+  lo = 0; hi = n-1
+  while lo &lt;= hi:
+    mid = lo + (hi - lo) / 2        // avoids overflow
+    if A[mid] == x: return mid
+    else if A[mid] &lt; x: lo = mid + 1
+    else: hi = mid - 1
+  return -1</code></pre>
+<p><b>Complexity.</b> T(n)=T(n/2)+Θ(1) ⇒ Θ(log n). Worst case comparisons (3-way) = ⌊log₂ n⌋ + 1; e.g. n=1000 needs 10 iterations.</p>
+<h3>Variants</h3>
+<pre><code>LowerBound(A, n, x):   // first index i with A[i] &gt;= x  (n if none)
+  lo = 0; hi = n                  // search in [lo, hi)
+  while lo &lt; hi:
+    mid = lo + (hi - lo) / 2
+    if A[mid] &lt; x: lo = mid + 1
+    else: hi = mid
+  return lo
+// UpperBound: same with test A[mid] &lt;= x  → first index with A[i] &gt; x
+// Count of x = UpperBound - LowerBound; first occurrence = LowerBound.</code></pre>
+<p><b>Example.</b> A=[1,2,2,2,3,5], x=2: LowerBound=1, UpperBound=4, count=3.</p>
+<ul><li><b>Search in rotated sorted array:</b> one half around mid is always sorted; decide if x is in it. Θ(log n) (distinct keys).</li>
+<li><b>Peak finding / search on answer:</b> binary search on a monotone predicate (e.g., smallest x with P(x) true), also used for square root, capacity problems.</li>
+<li><b>Unbounded search:</b> double the index (1,2,4,…) until A[i] ≥ x, then binary search: Θ(log p), p = position.</li></ul>
+<div class="box warn"><b>Pitfalls.</b> Off-by-one with lo&lt;=hi vs lo&lt;hi; infinite loops if lo=mid instead of mid+1; (lo+hi) overflow; duplicates (plain search returns any occurrence).</div>
+
+<h2>3. Merge sort</h2>
+<p><b>Idea.</b> Split in halves, sort each recursively, merge two sorted lists in linear time.</p>
+<pre><code>MergeSort(A, l, r):
+  if l &lt; r:
+    m = (l + r) / 2
+    MergeSort(A, l, m); MergeSort(A, m+1, r)
+    Merge(A, l, m, r)
+
+Merge: copy halves L, R; repeatedly move the smaller front element
+       (take from L on ties for stability); append the leftover.</code></pre>
+<p><b>Correctness.</b> Merge maintains: output so far holds the smallest elements in order; induction gives sortedness of MergeSort.</p>
+<p><b>Complexity.</b> T(n)=2T(n/2)+Θ(n) ⇒ Θ(n log n) in all cases. Merging lists of sizes p and q takes at most p+q−1 comparisons; worst-case total comparisons for n=2^k is n log₂n − n + 1 (n=8: 17). Space Θ(n), stable, not in-place. Recursion tree: log₂n + 1 levels, each doing n work.</p>
+<p><b>Example.</b> [38,27,43,3] → [38,27],[43,3] → [27,38],[3,43] → merge: 3,27,38,43.</p>
+
+<h2>4. Lower bound for comparison-based sorting</h2>
+<div class="box key"><b>Theorem.</b> Any comparison sort needs Ω(n log n) comparisons in the worst case.</div>
+<p><b>Proof (decision tree).</b> A deterministic comparison sort is a binary tree: internal nodes are comparisons a_i : a_j, leaves are output permutations. To be correct every one of the n! permutations must appear as a leaf. A binary tree of height h has ≤ 2^h leaves, so 2^h ≥ n! ⇒ h ≥ log₂(n!) = Θ(n log n) (since n! ≥ (n/2)^(n/2), or Stirling). Numbers: n=5 needs ≥ ⌈log₂120⌉ = 7 comparisons; n=8 needs ≥ ⌈log₂40320⌉ = 16.</p>
+<p>Hence merge sort and heap sort are asymptotically optimal. The average case is also Ω(n log n) (average leaf depth ≥ log₂ n!).</p>
+<div class="box warn"><b>Pitfall.</b> The bound applies only to comparison models. Counting sort (O(n+k)), radix sort, bucket sort beat it by using key values/indexing, not comparisons.</div>
+
+<h2>5. Quicksort</h2>
+<p><b>Idea.</b> Pick a pivot, partition so that smaller elements are left and larger right, recurse on both sides. Work is done in the divide step; combine is free.</p>
+<pre><code>Partition(A, l, r):         // Lomuto, pivot = A[r]
+  p = A[r]; i = l - 1
+  for j = l to r-1:
+    if A[j] &lt;= p: i++; swap A[i], A[j]
+  swap A[i+1], A[r]
+  return i+1
+
+Quicksort(A, l, r):
+  if l &lt; r: q = Partition(A, l, r); Quicksort(A, l, q-1); Quicksort(A, q+1, r)</code></pre>
+<p><b>Trace.</b> A=[7,2,9,4,3,8,5], pivot 5: scanning moves 2,4,3 to the left block; result [2,4,3,5,9,8,7], pivot index 3.</p>
+<h3>Analysis</h3>
+<ul><li><b>Worst case:</b> unbalanced split (sorted input with last-element pivot): T(n)=T(n-1)+Θ(n) ⇒ Θ(n²); n(n−1)/2 comparisons (n=10: 45).</li>
+<li><b>Best case:</b> T(n)=2T(n/2)+Θ(n) ⇒ Θ(n log n). Even a constant-fraction split (e.g. 9:1) gives Θ(n log n).</li>
+<li><b>Randomized quicksort (random pivot):</b> expected comparisons ≈ 2n ln n ≈ 1.39 n log₂n. <i>Proof via indicator variables:</i> elements of ranks i&lt;j are compared iff one of them is the first pivot chosen among ranks i..j, so Pr = 2/(j−i+1); E[comparisons] = Σ_{i&lt;j} 2/(j−i+1) = O(n log n) (harmonic sum). E.g. ranks 3 and 7: 2/5.</li></ul>
+<p>In-place (O(log n) expected stack), not stable, fast in practice due to cache behaviour. Handle duplicates with 3-way partition (Dutch flag).</p>
+<div class="box warn"><b>Pitfall.</b> Deterministic first/last pivot is Θ(n²) on sorted/reverse input; use random pivot or median-of-three.</div>
+
+<h2>6. Quickselect and expected running time</h2>
+<p><b>Problem.</b> Find the k-th smallest of n elements without full sorting.</p>
+<pre><code>Select(A, l, r, k):         // k-th smallest in A[l..r], 1-based
+  q = RandomizedPartition(A, l, r)
+  rank = q - l + 1
+  if k == rank: return A[q]
+  if k &lt; rank: return Select(A, l, q-1, k)
+  else: return Select(A, q+1, r, k - rank)</code></pre>
+<p><b>Expected time Θ(n).</b> Call a pivot good if it lies in the middle half (probability 1/2); a good pivot leaves ≤ 3n/4 elements. Expected 2 partitions per good step, so E[T(n)] ≤ E[T(3n/4)] + 2·cn ⇒ geometric series ≤ 8cn = O(n). Worst case Θ(n²).</p>
+<p><b>Example.</b> k=3 in [7,2,9,4,3,8,5]: after partition pivot 5 at rank 4; 3 &lt; 4 ⇒ recurse on [2,4,3] with k=3 ⇒ answer 4.</p>
+
+<h2>7. Median finding in worst-case linear time (median of medians)</h2>
+<pre><code>MoM-Select(A, k):
+  1. split into ⌈n/5⌉ groups of 5; sort each; take group medians
+  2. m = MoM-Select(medians, ⌈n/10⌉)      // median of medians
+  3. partition A around m
+  4. recurse into the side containing the k-th element</code></pre>
+<p><b>Why it works.</b> At least about 3n/10 − 6 elements are ≤ m and as many ≥ m, so each recursion side has ≤ 7n/10 + 6 elements. T(n) ≤ T(n/5) + T(7n/10 + 6) + cn. Since 1/5 + 7/10 = 9/10 &lt; 1, T(n)=O(n) (substitution T(n) ≤ 10cn).</p>
+<div class="box warn"><b>Pitfall.</b> Groups of 3 give T(n)=T(n/3)+T(2n/3)+cn = Θ(n log n): 1/3+2/3 = 1 breaks linearity. Groups of 7 also work. The constant is large, so randomized quickselect is used in practice. Using it as the quicksort pivot gives worst-case O(n log n) quicksort.</div>
+
+<h2>8. Fast exponentiation</h2>
+<p><b>Idea.</b> a^n = (a^(n/2))² if n even, a·(a^((n-1)/2))² if odd. Compute the half power <i>once</i>.</p>
+<pre><code>Power(a, n):
+  if n == 0: return 1
+  h = Power(a, n / 2)             // floor
+  if n even: return h * h
+  else: return h * h * a</code></pre>
+<p><b>Complexity.</b> T(n)=T(n/2)+Θ(1) ⇒ Θ(log n) multiplications (between ⌊log₂n⌋ and 2⌊log₂n⌋) versus n−1 naively. Example: 3^13, 13=1101₂ ⇒ 3, 3², 3³, 3⁶, 3¹², 3¹³ = 5 multiplications, value 1594323; 2^15 takes 6; 5^10 takes 4. With modulus M, reduce after each multiplication (modular exponentiation, used in RSA); also computes Fibonacci F(n) via the matrix [[1,1],[1,0]]^n in Θ(log n) matrix products.</p>
+<div class="box warn"><b>Pitfall.</b> Writing Power(a,n/2)*Power(a,n/2) makes two calls: T(n)=2T(n/2)+1 = Θ(n), no gain. Mind overflow and bit-cost of big numbers.</div>
+
+<h2>9. Matrix multiplication (naive D&amp;C and Strassen)</h2>
+<p>Naive: Θ(n³) (three loops). Block D&amp;C: split each n×n matrix into four n/2 blocks; C11=A11B11+A12B21 etc. takes <b>8</b> half-size products + Θ(n²) additions: T(n)=8T(n/2)+Θ(n²) = Θ(n³), no gain.</p>
+<div class="box key"><b>Strassen (1969).</b> Compute 7 products: M1=(A11+A22)(B11+B22), M2=(A21+A22)B11, M3=A11(B12−B22), M4=A22(B21−B11), M5=(A11+A12)B22, M6=(A21−A11)(B11+B12), M7=(A12−A22)(B21+B22). Then C11=M1+M4−M5+M7, C12=M3+M5, C21=M2+M4, C22=M1−M2+M3+M6.</div>
+<p>T(n)=7T(n/2)+Θ(n²) ⇒ Θ(n^(log₂7)) ≈ Θ(n^2.807). Assumes n a power of 2 (pad with zeros). Example: for n=1024 with scalar base case, Strassen uses 7^10 = 282,475,249 scalar multiplications versus 8^10 = 1,073,741,824 for the naive scheme. Large hidden constant and weaker numerical stability: it pays off only for large n (hundreds+). Same trick in integer multiplication (Karatsuba): T(n)=3T(n/2)+n = Θ(n^1.585).</p>
+
+<h2>10. Maximum subarray problem</h2>
+<p><b>Problem.</b> Given A[1..n] of reals, find a contiguous subarray with maximum sum.</p>
+<pre><code>MaxSub(A, l, r):
+  if l == r: return A[l]
+  m = (l + r) / 2
+  left  = MaxSub(A, l, m); right = MaxSub(A, m+1, r)
+  cross = (best sum of a suffix ending at m) + (best sum of a prefix starting at m+1)
+  return max(left, right, cross)</code></pre>
+<p>Cross sum is found in Θ(n) by scanning outwards from m. T(n)=2T(n/2)+Θ(n) = Θ(n log n). (Brute force Θ(n²) with prefix sums; <b>Kadane</b> gives Θ(n): cur = max(A[i], cur + A[i]), best = max(best, cur).)</p>
+<p><b>Example.</b> A=[−2,1,−3,4,−1,2,1,−5,4]: answer 6 for [4,−1,2,1].</p>
+<div class="box warn"><b>Pitfall.</b> Forgetting the crossing case; the cross part must contain both A[m] and A[m+1]. If all elements are negative the answer is the single largest element (non-empty subarray convention).</div>
+
+<h2>11. Counting inversions</h2>
+<p><b>Definition.</b> An inversion is a pair i&lt;j with A[i] &gt; A[j]; it measures how far the array is from sorted (0 for sorted, n(n−1)/2 for reverse). Used for ranking similarity.</p>
+<p><b>Algorithm.</b> Piggyback on merge sort: count = inv(left) + inv(right) + cross. During merge, when an element of the right half is placed before remaining elements of the left half, add the number of remaining left elements.</p>
+<pre><code>SortCount(A):
+  if |A| &lt;= 1: return (A, 0)
+  (L, a) = SortCount(left half); (R, b) = SortCount(right half)
+  merge L, R; whenever R[j] is output while L has t elements left: c += t
+  return (merged, a + b + c)</code></pre>
+<p>T(n)=2T(n/2)+Θ(n)=Θ(n log n) versus Θ(n²) brute force. <b>Example.</b> [5,3,2,4,1]: inversions = (5,3),(5,2),(5,4),(5,1),(3,2),(3,1),(2,1),(4,1) = 8.</p>
+<div class="box warn"><b>Pitfall.</b> Count cross inversions only while the halves are sorted; if the halves are not sorted the merge trick fails. Use strict &gt; (equal keys are not inversions).</div>
+
+<h2>12. Closest pair of points</h2>
+<p><b>Problem.</b> Among n points in the plane find two at minimum Euclidean distance. Brute force Θ(n²).</p>
+<pre><code>Closest(P):                // P sorted by x; also keep list sorted by y
+  if |P| &lt;= 3: brute force
+  split at median x-coordinate (line L) into Pl, Pr
+  d = min(Closest(Pl), Closest(Pr))
+  S = points within distance d of L, ordered by y
+  for each point in S: compare with the next 7 points in S   // strip check
+  return min(d, best found)</code></pre>
+<p><b>Why the strip step is O(n).</b> In the strip, a d × 2d rectangle holds at most 8 points (each d/2 × d/2 cell contains ≤ 1 point because pairs on one side are ≥ d apart), so each point needs checking against ≤ 7 successors in y-order. Keeping y-order via merging (not re-sorting) gives T(n)=2T(n/2)+Θ(n)=Θ(n log n); re-sorting the strip each time gives Θ(n log² n).</p>
+<div class="box warn"><b>Pitfalls.</b> The strip can contain nearly all points, so it is not small in the worst case; the constant-neighbours argument is what bounds it. Points on the dividing line and duplicate x-values need consistent tie-breaking.</div>
+
+<h2>Summary table</h2>
+<table><tr><th>Algorithm</th><th>Recurrence</th><th>Time</th></tr>
+<tr><td>Binary search</td><td>T(n/2)+1</td><td>Θ(log n)</td></tr>
+<tr><td>Merge sort</td><td>2T(n/2)+n</td><td>Θ(n log n)</td></tr>
+<tr><td>Quicksort (avg / worst)</td><td>–</td><td>Θ(n log n) / Θ(n²)</td></tr>
+<tr><td>Quickselect (exp / worst)</td><td>T(n/2)+n</td><td>Θ(n) / Θ(n²)</td></tr>
+<tr><td>Median of medians</td><td>T(n/5)+T(7n/10)+n</td><td>Θ(n)</td></tr>
+<tr><td>Fast power</td><td>T(n/2)+1</td><td>Θ(log n)</td></tr>
+<tr><td>Strassen</td><td>7T(n/2)+n²</td><td>Θ(n^2.807)</td></tr>
+<tr><td>Max subarray (D&amp;C)</td><td>2T(n/2)+n</td><td>Θ(n log n)</td></tr>
+<tr><td>Inversions / Closest pair</td><td>2T(n/2)+n</td><td>Θ(n log n)</td></tr></table>
+
+<h2>Quick revision</h2>
+<ul>
+<li>D&amp;C: divide, conquer, combine; T(n)=aT(n/b)+n^d; compare d with log_b a.</li>
+<li>Binary search Θ(log n), ⌊log₂n⌋+1 comparisons; lower/upper bound variants use half-open [lo,hi).</li>
+<li>Merge sort Θ(n log n) always, stable, Θ(n) extra space.</li>
+<li>Comparison sort lower bound: log₂(n!) = Ω(n log n) from n! leaves in decision tree.</li>
+<li>Quicksort: worst Θ(n²), expected ≈ 2n ln n; Pr[ranks i,j compared] = 2/(j−i+1).</li>
+<li>Quickselect expected Θ(n), worst Θ(n²); median of medians (groups of 5) worst-case Θ(n).</li>
+<li>Fast exponentiation Θ(log n) multiplications; compute the half power once.</li>
+<li>Strassen: 7 multiplications, Θ(n^2.807); Karatsuba: 3 multiplications, Θ(n^1.585).</li>
+<li>Max subarray D&amp;C Θ(n log n) (cross case!), Kadane Θ(n).</li>
+<li>Inversions via merge sort; closest pair via strip with ≤ 7 neighbours; both Θ(n log n).</li>
+</ul>
+</main></body></html>

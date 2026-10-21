@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quiz 3 — Dynamic Programming</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Quiz 3 — Dynamic Programming</h1><div id="app"></div></main>
+<script>window.QUIZ={items:[
+{
+"q": "Which two properties must a problem have for dynamic programming to be applicable?",
+"opts": [
+"Optimal substructure and overlapping subproblems",
+"Greedy choice property and optimal substructure",
+"Independent subproblems and a sorted input",
+"Overlapping subproblems and a graph representation"
+],
+"ans": 0,
+"why": "DP needs optimal substructure (an optimal solution is built from optimal solutions of subproblems) and overlapping subproblems (the same subproblems recur, so caching pays off). The greedy choice property is what greedy needs, not DP; independent (non-overlapping) subproblems are the divide-and-conquer setting, where caching gives no benefit; DP has no requirement about sorted input or graphs."
+},
+{
+"q": "The naive recursive Fibonacci F(n)=F(n-1)+F(n-2) takes exponential time, while the memoised version takes:",
+"opts": [
+"O(log n) time, since the recursion tree is balanced",
+"O(n²) time, since each call makes two calls",
+"O(2ⁿ) time, since memoisation only saves space",
+"O(n) time, since each of the n subproblems is solved once in O(1)"
+],
+"ans": 3,
+"why": "Memoisation caches each F(k) after its first computation, so there are n distinct subproblems each costing O(1) extra work: O(n). The tree is not balanced (so not log n); two calls per node does not give n² because repeated calls return at once from the cache; and memoisation saves time, not space."
+},
+{
+"q": "Top-down memoisation versus bottom-up tabulation: which statement is TRUE?",
+"opts": [
+"Tabulation uses recursion while memoisation uses loops",
+"Memoisation always has a better asymptotic bound than tabulation",
+"Memoisation solves only the subproblems actually reached but pays recursion overhead; tabulation fills the whole table in a fixed order",
+"Tabulation cannot be used when subproblems have dependencies"
+],
+"ans": 2,
+"why": "Top-down is recursion plus a cache and may skip unneeded states; bottom-up uses loops in a topological order of the subproblem DAG. The first distractor swaps the two. Worst-case asymptotics are normally identical. Tabulation works precisely because the dependencies form a DAG that can be ordered."
+},
+{
+"q": "Maximum Weight Independent Set on a path with weights 4, 1, 1, 9, 3, 6 (in order). What is the optimum weight?",
+"opts": [
+"13",
+"19",
+"16",
+"20"
+],
+"ans": 1,
+"why": "Recurrence M[i]=max(M[i-1], M[i-2]+w_i) gives M = 0,4,4,5,13,13,19. The set {4, 9, 6} (vertices 1,4,6) has weight 19. 13 is the value after vertex 5, ignoring vertex 6. 16 and 20 are not the weight of any independent set that beats or equals the DP value."
+},
+{
+"q": "In the Weighted Independent Set on a path DP, the recurrence M[i] = max(M[i-1], M[i-2] + w_i) captures which choice?",
+"opts": [
+"Either vertex i is included or vertex i-1 is included, never both",
+"Either vertex i is excluded (use M[i-1]) or included, which forces vertex i-1 out (use M[i-2])",
+"Vertex i is always included, and we choose the better of two predecessors",
+"Vertex i is excluded and we choose between vertices i-1 and i-2"
+],
+"ans": 1,
+"why": "If i is in the optimal set, its neighbour i-1 cannot be, so the rest is optimal on the first i-2 vertices. If i is not in the set, the rest is optimal on the first i-1 vertices. The distractors misdescribe the cases: i need not be included, and the 'exclude i' case is not a choice between predecessors."
+},
+{
+"q": "Weighted Interval Scheduling: intervals are sorted by finish time and p(j) is the largest index i&lt;j whose interval is compatible with j. The recurrence is:",
+"opts": [
+"OPT(j) = max( v_j + OPT(p(j)), OPT(j-1) )",
+"OPT(j) = max( v_j + OPT(j-1), OPT(p(j)) )",
+"OPT(j) = v_j + OPT(p(j))",
+"OPT(j) = max( OPT(p(j)), OPT(j-2) )"
+],
+"ans": 0,
+"why": "Either j is used (gain v_j, then only intervals ending before j starts, i.e. up to p(j), remain) or j is not used (OPT(j-1)). The first distractor uses j-1 after choosing j, which may overlap. The second forgets the 'skip j' choice. The last has no v_j at all and an unjustified j-2."
+},
+{
+"q": "Running time of Weighted Interval Scheduling for n intervals, including preprocessing, is:",
+"opts": [
+"O(n)",
+"O(n²)",
+"O(2ⁿ)",
+"O(n log n)"
+],
+"ans": 3,
+"why": "Sorting by finish time costs O(n log n); each p(j) is found by binary search in O(log n); the DP itself is O(n). The total is dominated by O(n log n). O(n) holds only if the input is already sorted and p is given; O(n²) arises from linear scans for p(j); O(2ⁿ) is the unmemoised recursion."
+},
+{
+"q": "Intervals (start,finish,value), already sorted by finish time: (1,4,3), (3,5,2), (0,6,4), (4,7,5), (3,8,6), (5,9,3), (6,10,2), (8,11,4). What is the optimal total value?",
+"opts": [
+"11",
+"8",
+"12",
+"14"
+],
+"ans": 2,
+"why": "With p = 0,0,0,1,0,2,3,5 the DP gives OPT = 3,3,4,8,8,8,8,12. The optimum 12 uses (1,4,3), (4,7,5), (8,11,4), which are mutually compatible. 8 is the value before the last interval is considered; 11 and 14 are not the value of any compatible set."
+},
+{
+"q": "In a DAG, the longest path from a source can be found in O(V+E) time because:",
+"opts": [
+"Longest path in any graph reduces to shortest path by negating weights, which Dijkstra handles",
+"A DAG has at most V edges",
+"Processing vertices in topological order guarantees every predecessor's value is final before it is used",
+"DAGs have no negative edges, so Dijkstra applies"
+],
+"ans": 2,
+"why": "With a topological order, dist[v] = max over edges (u,v) of dist[u]+w is computed after all dist[u] are final: one pass over all edges. Negating weights creates negative edges (Dijkstra fails) and with cycles longest path is NP-hard; a DAG can have Θ(V²) edges; DAG weights may be negative, and the method does not depend on that."
+},
+{
+"q": "A DAG has edges S→A (3), S→B (2), A→C (4), A→D (1), B→C (1), B→D (6), C→T (2), D→T (3). The lengths of the LONGEST and the SHORTEST S-to-T paths are:",
+"opts": [
+"11 and 7",
+"11 and 5",
+"9 and 5",
+"12 and 5"
+],
+"ans": 1,
+"why": "Topological order S,A,B,C,D,T. Longest: A=3, B=2, C=max(3+4,2+1)=7, D=max(3+1,2+6)=8, T=max(7+2,8+3)=11 (path S-B-D-T). Shortest: C=3, D=4, T=min(3+2,4+3)=5 (path S-B-C-T). The other pairs come from mixing up max and min or mis-adding."
+},
+{
+"q": "Which problem is typically solved as a longest path in the DAG whose nodes are sequence positions and which has an edge i→j when i&lt;j and a[i]&lt;a[j]?",
+"opts": [
+"Longest Increasing Subsequence",
+"Edit distance",
+"Matrix chain multiplication",
+"Fractional knapsack"
+],
+"ans": 0,
+"why": "The LIS DP is a longest path in that DAG: L[j]=1+max L[i] over i&lt;j with a[i]&lt;a[j]. Edit distance uses a grid DAG of (i,j) prefixes; matrix chain uses intervals; fractional knapsack is greedy."
+},
+{
+"q": "The standard DP for LIS and the improved algorithm that keeps a sorted array of 'tails' with binary search run in:",
+"opts": [
+"O(n) and O(n log n)",
+"O(n²) and O(n²)",
+"O(n log n) and O(log n)",
+"O(n²) and O(n log n) respectively"
+],
+"ans": 3,
+"why": "The simple DP compares each element with all earlier ones (n²). The tails method keeps tail[k] = smallest ending value of an increasing subsequence of length k, and binary-searches each element's place: n log n. No simple O(n) method exists for general input, and O(log n) cannot even read the input."
+},
+{
+"q": "Edit distance between CAT and CUT with insert, delete and substitute all costing 1 is:",
+"opts": [
+"0",
+"2",
+"3",
+"1"
+],
+"ans": 3,
+"why": "Substitute A with U: one operation. Distance 0 would mean equal strings. Delete+insert (2) is valid but not minimum; 3 is just the last entry of the first row or column of the table, not the answer."
+},
+{
+"q": "The edit distance recurrence for D[i][j] is:",
+"opts": [
+"min( D[i-1][j], D[i][j-1], D[i-1][j-1] ) + 1",
+"max( D[i-1][j]+1, D[i][j-1]+1, D[i-1][j-1] )",
+"min( D[i-1][j]+1, D[i][j-1]+1, D[i-1][j-1] + [x_i ≠ y_j] )",
+"D[i-1][j-1] + [x_i ≠ y_j] only"
+],
+"ans": 2,
+"why": "The three terms are delete x_i, insert y_j, and match/substitute. Adding 1 outside the min would charge a cost even for a match. max gives the worst alignment, not the best. Using only the diagonal ignores insertions and deletions, which are needed when lengths differ."
+},
+{
+"q": "Edit distance between SUNDAY and SATURDAY (unit costs) is:",
+"opts": [
+"2",
+"3",
+"4",
+"5"
+],
+"ans": 1,
+"why": "SATURDAY has 8 letters and SUNDAY 6, so at least 2 insertions are needed (A,T). Align S-U-N-D-A-Y with S-A-T-U-R-D-A-Y: insert A and T, U matches, N becomes R: 2 insertions + 1 substitution = 3. The DP table also gives 3; 2 is impossible because N versus R must also be fixed."
+},
+{
+"q": "Time and space of the straightforward edit distance DP for strings of lengths m and n:",
+"opts": [
+"O(mn) time and O(mn) space (O(min(m,n)) space if only the distance is needed)",
+"O(m+n) time and O(1) space",
+"O(mn) time and O(m+n) space in all cases",
+"O(2^(m+n)) time with memoisation"
+],
+"ans": 0,
+"why": "There are (m+1)(n+1) cells, each O(1). Each row depends only on the previous row, so two rows suffice if the alignment need not be recovered. Linear time is not known for the general problem. Memoisation turns the exponential recursion into O(mn)."
+},
+{
+"q": "0/1 knapsack with n items and capacity W has a DP of time O(nW). It is called pseudo-polynomial because:",
+"opts": [
+"W is a number whose value is exponential in the number of bits needed to write it",
+"It runs in polynomial time only for sorted items",
+"The algorithm is randomised",
+"O(nW) is always smaller than O(n log n)"
+],
+"ans": 0,
+"why": "Input size involves log W bits, so W = 2^(log W) is exponential in input length; nW is therefore not polynomial in the input size. Sorting is irrelevant, the algorithm is deterministic, and nW can be far larger than n log n."
+},
+{
+"q": "0/1 knapsack, capacity 7, items (weight,value): (1,1), (3,4), (4,5), (5,7). The maximum value is:",
+"opts": [
+"8",
+"10",
+"12",
+"9"
+],
+"ans": 3,
+"why": "The last DP row for capacities 0..7 is 0,1,1,4,5,7,8,9. The best set is the items of weight 3 and 4 (value 4+5=9, weight 7). The set of weights 1 and 5 gives only 8. 12 would need items of total weight 13, and 10 is not achievable by any feasible set."
+},
+{
+"q": "Why does the greedy 'highest value/weight ratio first' strategy fail for 0/1 knapsack but work for fractional knapsack?",
+"opts": [
+"The 0/1 problem has no optimal substructure",
+"Fractional knapsack is NP-hard",
+"In 0/1 knapsack items cannot be split, so greedy can leave capacity unused and miss better combinations",
+"Ratios cannot be compared for integer weights"
+],
+"ans": 2,
+"why": "Example: capacity 50, items (10,60), (20,100), (30,120): greedy takes ratios 6 and 5, giving 160, but items 2 and 3 give 220. In the fractional version leftover capacity is filled by a fraction, so greedy is optimal. The 0/1 problem does have optimal substructure (that is why DP works), and the fractional version is polynomial."
+},
+{
+"q": "Knapsack table K[i][c] = best value using the first i items with capacity c. The correct recurrence is:",
+"opts": [
+"K[i][c] = max( K[i-1][c], K[i][c-w_i] + v_i )",
+"K[i][c] = max( K[i-1][c], K[i-1][c-w_i] + v_i ) when w_i ≤ c, else K[i-1][c]",
+"K[i][c] = K[i-1][c-w_i] + v_i always",
+"K[i][c] = max( K[i-1][c], K[i-1][c-1] + v_i )"
+],
+"ans": 1,
+"why": "0/1 means each item at most once, so after taking item i we move to row i-1. The first distractor uses row i again, which allows repeated use (unbounded knapsack). The second forgets the 'skip' choice and the capacity check. The last subtracts 1 instead of w_i."
+},
+{
+"q": "Matrix chain: A1 is 10×20, A2 is 20×30, A3 is 30×40, A4 is 40×30. The minimum number of scalar multiplications for A1A2A3A4 is:",
+"opts": [
+"36000",
+"30000",
+"48000",
+"24000"
+],
+"ans": 1,
+"why": "With p = 10,20,30,40,30: m[1,2]=6000, m[2,3]=24000, m[3,4]=36000, m[1,3]=18000, m[2,4]=48000. Then for m[1,4]: k=1: 0+48000+10·20·30=54000; k=2: 6000+36000+10·30·30=51000; k=3: 18000+0+10·40·30=30000. The minimum is 30000 for ((A1A2)A3)A4. The other options are intermediate table entries, not the final one."
+},
+{
+"q": "The matrix chain DP for n matrices runs in:",
+"opts": [
+"O(n³) time and O(n²) space",
+"O(n²) time and O(n) space",
+"O(n log n) time",
+"O(2ⁿ) time and O(n) space"
+],
+"ans": 0,
+"why": "There are Θ(n²) subproblems (i,j) and each tries up to n-1 split points: Θ(n³) time, with a Θ(n²) table (plus a split table). The number of parenthesisations is a Catalan number, exponential, which is what brute force enumerates."
+},
+{
+"q": "The number of different full parenthesisations of a product of 5 matrices is:",
+"opts": [
+"5",
+"24",
+"42",
+"14"
+],
+"ans": 3,
+"why": "The count for n matrices is the Catalan number C(n-1); here C4 = 14. 42 is C5 (6 matrices), 24 is 4!, and 5 is unrelated. This exponential growth is why brute force is infeasible."
+},
+{
+"q": "Rod cutting, prices for lengths 1..8: 1,5,8,9,10,17,17,20. The maximum revenue for a rod of length 8 is:",
+"opts": [
+"20",
+"21",
+"22",
+"24"
+],
+"ans": 2,
+"why": "r(n)=max over i of p_i + r(n-i) gives r = 0,1,5,8,10,13,17,18,22. Cut 8 as 2+6 (5+17=22). Selling it uncut gives only 20; 21 and 24 are not achievable."
+},
+{
+"q": "Rod cutting with prices 2,5,7,8 for lengths 1..4. What is the best revenue for length 4?",
+"opts": [
+"8",
+"9",
+"10",
+"12"
+],
+"ans": 2,
+"why": "r = 0,2,5,7,10; cutting into 2+2 yields 5+5=10, better than uncut (8) or 1+3 (2+7=9). 12 would require pieces that do not exist."
+},
+{
+"q": "Bottom-up DP for rod cutting on a rod of length n takes:",
+"opts": [
+"Θ(n) time",
+"Θ(n²) time and Θ(n) space",
+"Θ(2ⁿ) time because there are 2^(n-1) ways to cut",
+"Θ(n³) time"
+],
+"ans": 1,
+"why": "r(j) needs a loop over i=1..j, so the total is n(n+1)/2 = Θ(n²), with an array r[0..n]. The naive recursion explores 2^(n-1) cut patterns (exponential); the DP uses that only n distinct subproblems r(0..n) exist. Θ(n³) would need a third nested loop that is not present."
+},
+{
+"q": "Optimal BST with 3 keys and access probabilities 0.34, 0.08, 0.58 (successful searches only, root at depth 1). The expected cost of the optimal tree is:",
+"opts": [
+"1.5",
+"1.66",
+"1.74",
+"1.92"
+],
+"ans": 0,
+"why": "Using e(i,j)=min over roots r of e(i,r-1)+e(r+1,j)+Σp, the optimum e(1,3)=1.5: root = third key (0.58 at depth 1), key 0.34 at depth 2, key 0.08 at depth 3, cost 0.58+0.68+0.24=1.5. Making the middle key (0.08) the root, the balanced tree costs 0.08+2(0.34+0.58)=1.92."
+},
+{
+"q": "In the Optimal BST recurrence e(i,j) = min over r in [i..j] of ( e(i,r-1) + e(r+1,j) ) + w(i,j), where w(i,j) = Σ p_k for k=i..j, the term w(i,j) is added because:",
+"opts": [
+"The root must be searched twice",
+"It normalises the probabilities to 1",
+"It accounts for unsuccessful searches only",
+"Making r the root pushes every key in i..j one level deeper, so each probability is added once more"
+],
+"ans": 3,
+"why": "When two optimal subtrees are hung under a new root, every node in them gets depth+1 and the root itself is at depth 1, so the expected cost increases by the sum of all probabilities in the range. It has nothing to do with double-searching the root, normalisation, or failed searches (those use the q terms in the general form)."
+},
+{
+"q": "Time complexity of the straightforward Optimal BST DP for n keys is:",
+"opts": [
+"O(n log n)",
+"O(n²) with no further optimisation",
+"O(2ⁿ)",
+"O(n³) (reducible to O(n²) using Knuth's root monotonicity)"
+],
+"ans": 3,
+"why": "There are O(n²) intervals (i,j) and each tries O(n) roots: O(n³). Knuth's observation root(i,j-1) ≤ root(i,j) ≤ root(i+1,j) makes the total search per diagonal O(n), giving O(n²). Greedily taking the most probable key as the root is not optimal, so n log n is not available."
+},
+{
+"q": "A student memoises a recursive function but the memo key omits one of the parameters the recursion depends on. The most likely consequence is:",
+"opts": [
+"Only a slower program, still correct",
+"A stack overflow in every case",
+"Wrong answers, because different subproblems collide in the cache",
+"A better space bound with the same correctness"
+],
+"ans": 2,
+"why": "A memo table must be indexed by the full state: two different subproblems mapped to one key return a stale value, giving wrong output rather than mere slowness. Recursion depth is not what is affected, and no space trick makes this correct. Defining the state completely is the central step of any DP design."
+}
+]};</script><script src="../assets/quiz.js"></script></body></html>

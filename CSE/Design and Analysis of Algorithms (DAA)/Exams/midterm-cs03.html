@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mid-Term Examination — CS3003E DAA (Paper CS03)</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Mid-Term Examination — CS3003E DAA (Paper CS03)</h1><p class="meta"><span>Time: 90 minutes</span><span>Max marks: 30</span></p><div id="app"></div></main>
+<script>window.EXAM={
+ "instructions": [
+  "Answer ALL questions. Total 30 marks (Part A: 5 x 2 = 10; Part B: 4 x 3 = 12; Part C: 2 x 4 = 8).",
+  "Scope: Topics T1 (binary search to median finding), T2 (greedy strategy to MST/Huffman) and T3 (DP principles to LIS). NP-completeness is not included.",
+  "Show intermediate steps; marks are awarded for method as well as the final answer."
+ ],
+ "sections": [
+  {
+   "name": "Part A — Short answer (5 x 2 = 10 marks)",
+   "note": "Answer all five questions.",
+   "qs": [
+    {
+     "q": "Write the recurrence for the number of moves T(n) made by the recursive Tower of Hanoi solution for n disks and solve it.",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "Move n−1 disks to the spare peg, move the largest disk, move n−1 disks onto it: T(n) = 2T(n−1) + 1, T(0) = 0.<br>Unrolling: T(n) = 2^n T(0) + (2^(n−1)+…+1) = <b>2^n − 1</b> = Θ(2^n)."
+    },
+    {
+     "q": "In the median-of-medians selection algorithm (groups of 5), write the recurrence for the running time and explain in a line why it solves to O(n).",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "At least about 3n/10 elements are discarded, so the recursive call on the pivot partition has size ≤ 7n/10: T(n) ≤ T(n/5) + T(7n/10) + cn. Since 1/5 + 7/10 = 9/10 &lt; 1, guess T(n) ≤ dn: dn/5 + 7dn/10 + cn = (9d/10 + c)n ≤ dn when d ≥ 10c. Hence T(n) = O(n)."
+    },
+    {
+     "q": "State the two properties needed for a greedy strategy to be correct. Show that the greedy 'always take the largest coin' fails for coins {1, 3, 4} and amount 6.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Greedy-choice property (some optimal solution contains the greedy first choice) and optimal substructure (the rest is an optimal solution of the residual problem).<br>Amount 6: greedy takes 4+1+1 = 3 coins, but 3+3 = 2 coins is optimal."
+    },
+    {
+     "q": "Edge weights of a connected graph are all distinct. True or False, with a reason: (a) the lightest edge belongs to the MST; (b) the heaviest edge never belongs to the MST.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "(a) True: for any cut separating its endpoints, the lightest edge overall is the lightest crossing edge, so the cut property includes it.<br>(b) False: if the heaviest edge is a bridge (e.g. a path graph), it must be in every spanning tree. It is excluded only when it is the heaviest edge on some cycle (cycle property)."
+    },
+    {
+     "q": "A path of three vertices a – b – c has weights 3, 4, 3. Show that the greedy rule 'repeatedly choose the heaviest remaining vertex' fails for the maximum weight independent set, and compute the DP optimum.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Greedy picks b (4), which removes a and c: total 4. DP: OPT(0)=0, OPT(1)=3, OPT(2)=max(3,4)=4, OPT(3)=max(4, 3+OPT(1)=6)=6. <b>Optimum 6</b> with {a, c}."
+    }
+   ]
+  },
+  {
+   "name": "Part B — Short problems (4 x 3 = 12 marks)",
+   "note": "Answer all four questions.",
+   "qs": [
+    {
+     "q": "Let z_1 &lt; z_2 &lt; … &lt; z_n be the sorted order of the input of randomised quicksort. Show that z_i and z_j (i&lt;j) are compared with probability 2/(j−i+1) and deduce that the expected number of comparisons is O(n log n).",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "z_i and z_j are compared iff the first pivot chosen from {z_i,…,z_j} is z_i or z_j (if a middle element is chosen first, they are separated and never compared; two elements are compared at most once). Each of the j−i+1 elements is equally likely to be first, so P = 2/(j−i+1).<br>E[comparisons] = Σ_{i&lt;j} 2/(j−i+1) ≤ Σ_{i=1}^{n} Σ_{k=2}^{n} 2/k ≤ 2n·(H_n − 1) = O(n log n) (≈ 2n ln n).<br>Marking: probability (1.5), summation (1.5)."
+    },
+    {
+     "q": "A sorted array A[1..n] contains distinct integers (possibly negative). Design an O(log n) algorithm to decide whether some index i has A[i] = i, and justify its correctness.",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "Key fact: for distinct integers A[i+1] ≥ A[i] + 1, so B[i] = A[i] − i is non-decreasing. Binary search on mid: if A[mid] = mid return mid; if A[mid] &gt; mid then B[mid] &gt; 0 and B stays &gt; 0 to the right, so a fixed point (B = 0) can only be on the left: search [lo, mid−1]; if A[mid] &lt; mid search [mid+1, hi]. Each step halves the range: T(n)=T(n/2)+O(1) = O(log n).<br>Marking: monotonic observation (1.5), algorithm (1), complexity (0.5)."
+    },
+    {
+     "q": "Tree edges: r–a, r–b, r–c, a–d, a–e, b–f, f–g, c–h, c–i. Apply the leaf-based greedy algorithm for maximum independent set, showing each step, and give the size of the set.",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "Leaves: d, e, g, h, i. Pick d (delete d and a). e is now isolated: pick e. Pick g (delete g and f). Pick h (delete h and c); i is isolated: pick i. Remaining vertices r, b with edge r–b (r's other neighbours a, c are gone): b is a leaf: pick b (delete b and r).<br><b>Set = {d, e, g, h, i, b}, size 6.</b> Check: no two adjacent. Optimal since a maximum matching {a–d, c–h, f–g, r–b} has size 4 and MIS = n − matching = 10 − 4 = 6 for a tree.<br>Marking: steps (2), set and size (1)."
+    },
+    {
+     "q": "A DAG has edges s→a, s→b, a→b, a→c, b→c, b→d, c→d, c→t, d→t. Use DP over a topological order to count the number of distinct s→t paths. State the recurrence.",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "Recurrence: paths(v) = Σ over edges (u→v) of paths(u), paths(s) = 1. Topological order s, a, b, c, d, t.<br>paths(s)=1; a = 1; b = s + a = 2; c = a + b = 3; d = b + c = 5; t = c + d = 3 + 5 = <b>8</b>. Time O(V+E).<br>Marking: recurrence (1), table (1.5), answer (0.5)."
+    }
+   ]
+  },
+  {
+   "name": "Part C — Design and analysis (2 x 4 = 8 marks)",
+   "note": "Answer both questions.",
+   "qs": [
+    {
+     "q": "Run the O(n²) LIS dynamic program on A = [3, 1, 8, 2, 5, 9, 4, 7]. Give the table of L[i] with predecessors, the LIS length, and one LIS reconstructed using the pointers. Mention how the running time can be improved.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "L[i] = 1 + max{L[j] : j&lt;i, A[j]&lt;A[i]}, pred = the arg-max j.<br>A: 3, 1, 8, 2, 5, 9, 4, 7<br>L: 1, 1, 2, 2, 3, 4, 3, 4<br>pred (by value): –, –, 3, 1, 2, 5, 2, 5 (the 7 can also use 4).<br><b>LIS length = 4</b>; from 9: 9 ← 5 ← 2 ← 1 gives <b>1, 2, 5, 9</b> (also 1, 2, 5, 7).<br>Improvement: maintain a 'tails' array and binary search for each element, O(n log n).<br>Marking: table (2), reconstruction (1), improvement (1)."
+    },
+    {
+     "q": "Files of sizes 20, 30, 10, 5, 30 are to be merged into one file by repeatedly merging two files; merging files of sizes x and y costs x + y. (i) Compute the cost when merging left to right in the given order. (ii) Show how Huffman's greedy strategy gives a cheaper merge order and compute its cost. (iii) Explain why this is the same problem as building a Huffman tree.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "(i) 20+30 = 50 (cost 50); 50+10 = 60 (60); 60+5 = 65 (65); 65+30 = 95 (95): total <b>270</b>.<br>(ii) Always merge the two smallest: 5+10 = 15 (15); 15+20 = 35 (35); 30+30 = 60 (60); 35+60 = 95 (95): total <b>205</b>.<br>(iii) The merge order is a binary tree with files as leaves; each file's size is counted once per internal node above it, i.e. total cost = Σ size × depth, exactly the Huffman encoded length with sizes as frequencies, which is minimised by repeatedly merging the two smallest.<br>Marking: (i) 1, (ii) 2, (iii) 1."
+    }
+   ]
+  }
+ ]
+};</script><script src="../assets/exam.js"></script></body></html>

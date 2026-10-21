@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mid-Term Examination — CS3003E DAA (Paper CS01)</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Mid-Term Examination — CS3003E DAA (Paper CS01)</h1><p class="meta"><span>Time: 90 minutes</span><span>Max marks: 30</span></p><div id="app"></div></main>
+<script>window.EXAM={
+ "instructions": [
+  "Answer ALL questions. Total 30 marks (Part A: 5 x 2 = 10; Part B: 4 x 3 = 12; Part C: 2 x 4 = 8).",
+  "Scope: Topics T1 (binary search to median finding), T2 (greedy strategy to MST/Huffman) and T3 (DP principles to LIS). NP-completeness is not included.",
+  "Show intermediate steps; marks are awarded for method as well as the final answer."
+ ],
+ "sections": [
+  {
+   "name": "Part A — Short answer (5 x 2 = 10 marks)",
+   "note": "Answer all five questions.",
+   "qs": [
+    {
+     "q": "Solve T(n) = 3T(n/2) + n using the Master theorem. State the case used.",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "a = 3, b = 2, f(n) = n. n^(log2 3) ≈ n^1.585. Since f(n) = O(n^(1.585 − ε)) for ε = 0.5, Case 1 applies (leaves dominate).<br><b>T(n) = Θ(n^(log2 3)) ≈ Θ(n^1.585).</b><br>Marking: identifying a, b and the critical exponent (1); correct case and result (1)."
+    },
+    {
+     "q": "State and justify (in 3–4 lines) the Ω(n log n) lower bound for comparison-based sorting of n distinct keys.",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "Any comparison sort is a binary decision tree whose leaves are the possible outputs. All n! orderings must appear as distinct leaves, so a binary tree of height h has at most 2^h ≥ n! leaves, giving h ≥ log2(n!). Since n! ≥ (n/2)^(n/2), log2(n!) ≥ (n/2) log2(n/2) = Ω(n log n). The height is the worst-case number of comparisons.<br>Marking: n! leaves (1); height ≥ log2 n! = Ω(n log n) (1)."
+    },
+    {
+     "q": "Items (value, weight): (60, 10), (100, 20), (120, 30); knapsack capacity W = 50. Find the optimal value of the <i>fractional</i> knapsack and the fraction of each item taken.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Value/weight ratios: 6, 5, 4. Take items in decreasing ratio: item 1 fully (weight 10, value 60), item 2 fully (weight 20, value 100) – used 30; remaining capacity 20 gives 20/30 = 2/3 of item 3, value 80.<br><b>Optimum = 60 + 100 + 80 = 240</b> (fractions 1, 1, 2/3)."
+    },
+    {
+     "q": "Give a counterexample showing that the greedy rule 'repeatedly pick the compatible interval with the earliest <i>start</i> time' does not maximise the number of scheduled intervals. What rule is correct?",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Intervals A = [1,10], B = [2,3], C = [4,5]. Earliest start picks A (start 1) and then everything else overlaps A, so 1 interval is chosen, but {B, C} are compatible: optimum 2.<br>The correct rule is <b>earliest finish time</b> (proved by an exchange argument)."
+    },
+    {
+     "q": "A path graph has vertex weights 3, 2, 7, 10 (in order). Using the DP recurrence OPT(i) = max(OPT(i−1), w_i + OPT(i−2)), fill in OPT(0..4) and give the chosen vertices.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "OPT(0)=0, OPT(1)=3, OPT(2)=max(3,2)=3, OPT(3)=max(3, 7+3)=10, OPT(4)=max(10, 10+3)=13.<br><b>Maximum weight = 13</b>; backtracking: OPT(4) took vertex 4 (10+OPT(2)), OPT(2)=OPT(1) took vertex 1 (3). Set = {v1, v4}."
+    }
+   ]
+  },
+  {
+   "name": "Part B — Short problems (4 x 3 = 12 marks)",
+   "note": "Answer all four questions.",
+   "qs": [
+    {
+     "q": "Quicksort with the last element as pivot is run on an already sorted array of n distinct keys. (i) Write the recurrence for the number of comparisons and solve it. (ii) Name one way to avoid this behaviour and state the resulting expected number of comparisons.",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "(i) The pivot is the maximum, so partition gives sizes n−1 and 0: T(n) = T(n−1) + (n−1), T(1)=0 ⇒ T(n) = n(n−1)/2 = Θ(n²).<br>(ii) Choose the pivot uniformly at random (or median of three/random shuffle first). Expected comparisons ≈ 2n ln n ≈ 1.39 n log2 n = O(n log n) for every input.<br>Marking: recurrence (1), solution (1), remedy and expected cost (1)."
+    },
+    {
+     "q": "Construct a Huffman code for frequencies a:45, b:13, c:12, d:16, e:9, f:5. Give the merge order, the codeword lengths and the average number of bits per symbol (frequencies are percentages).",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "Merges (smallest two each time): f5+e9 = 14; c12+b13 = 25; 14+d16 = 30; 25+30 = 55; a45+55 = 100.<br>Depths: a = 1; c, b, d = 3; f, e = 4 (one valid assignment: a=0, c=100, b=101, f=1100, e=1101, d=111).<br>Average = (45·1 + 12·3 + 13·3 + 16·3 + 5·4 + 9·4)/100 = (45+36+39+48+20+36)/100 = <b>2.24 bits</b>, versus 3 bits for fixed-length code.<br>Marking: merge sequence (1), lengths/tree (1), average (1)."
+    },
+    {
+     "q": "Find the length of a longest increasing subsequence of A = [5, 2, 8, 6, 3, 6, 9, 7] using the O(n²) DP. Write the table L[i] and one actual LIS.",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "L[i] = 1 + max{L[j] : j&lt;i, A[j]&lt;A[i]}.<br>A: 5, 2, 8, 6, 3, 6, 9, 7<br>L: 1, 1, 2, 2, 2, 3, 4, 4 (second 6 follows 2,3 → 3; 9 follows second 6 → 4; 7 follows second 6 → 4).<br><b>LIS length = 4</b>, e.g. 2, 3, 6, 9 (or 2, 3, 6, 7).<br>Marking: recurrence (1), table (1), length and sequence (1)."
+    },
+    {
+     "q": "Write binary-search pseudocode that returns the index of the <i>first</i> occurrence of x in a sorted array with duplicates (or −1). Trace it on A = [1,2,2,2,3,5,5] (indices from 0), x = 2.",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "<pre><code>lo=0; hi=n-1; ans=-1\nwhile lo &lt;= hi:\n    mid=(lo+hi)/2\n    if A[mid]==x: ans=mid; hi=mid-1   # keep looking left\n    elif A[mid]&lt;x: lo=mid+1\n    else: hi=mid-1\nreturn ans</code></pre>Trace: lo=0,hi=6,mid=3, A=2 → ans=3, hi=2; mid=1, A=2 → ans=1, hi=0; mid=0, A=1 &lt; 2 → lo=1; lo&gt;hi stop. <b>Answer 1</b>. Time O(log n).<br>Marking: correct update on equality (1), rest of code (1), trace (1)."
+    }
+   ]
+  },
+  {
+   "name": "Part C — Design and analysis (2 x 4 = 8 marks)",
+   "note": "Answer both questions.",
+   "qs": [
+    {
+     "q": "Graph on vertices A–F with weighted edges: AB 4, AC 2, BC 1, BD 5, CD 8, CE 10, DE 2, DF 6, EF 3. (i) Run Kruskal's algorithm, listing each edge as accepted/rejected. (ii) Give the MST weight. (iii) State the cut property and use it to justify one accepted edge.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "(i) Sorted: BC1, AC2, DE2, EF3, AB4, BD5, DF6, CD8, CE10.<br>BC1 accept; AC2 accept ({A,B,C}); DE2 accept; EF3 accept ({D,E,F}); AB4 reject (A,B already connected); BD5 accept (joins the two components); remaining edges rejected (cycles).<br>(ii) MST edges BC, AC, DE, EF, BD: <b>weight = 1+2+2+3+5 = 13</b> (5 edges = 6−1).<br>(iii) Cut property: for any cut, a minimum-weight edge crossing it belongs to some MST. For the cut ({A,B,C}, {D,E,F}) the lightest crossing edge is BD (5), so BD is safe.<br>Marking: Kruskal trace (2), weight (1), cut property (1)."
+    },
+    {
+     "q": "A DAG has vertices S, A, B, C, D, T with weighted edges S→A 3, S→B 2, A→C 4, A→D 1, B→C 1, B→D 5, C→T 2, D→T 3. (i) Give a topological order. (ii) Using DP over it, find the length of the longest S→T path and the path itself. (iii) State the running time of the method.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "(i) S, A, B, C, D, T.<br>(ii) dist(v) = max over edges (u→v) of dist(u) + w. dist(S)=0, A=3, B=2, C=max(3+4, 2+1)=7, D=max(3+1, 2+5)=7, T=max(7+2, 7+3)=10. <b>Longest length = 10</b> via S→B→D→T (2+5+3).<br>(iii) Topological sort O(V+E) + one relaxation per edge: <b>O(V+E)</b> total.<br>Marking: order (1), table (1), path (1), complexity (1)."
+    }
+   ]
+  }
+ ]
+};</script><script src="../assets/exam.js"></script></body></html>

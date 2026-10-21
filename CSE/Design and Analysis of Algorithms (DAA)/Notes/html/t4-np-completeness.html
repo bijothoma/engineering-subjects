@@ -1,0 +1,130 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>T4 — NP-Completeness</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>T4 — NP-Completeness, Approximation and Heuristics</h1>
+<p class="sub">CS3003E DAA · Refs: DPV Ch.8, CLRS Ch.34–35, Kleinberg–Tardos Ch.8, Levitin Ch.11–12</p>
+
+<h2>1. Decision problems and polynomial-time reductions</h2>
+<div class="box"><b>Decision problem:</b> a yes/no question about an input, e.g. "does graph G have a clique of size ≥ k?". Optimisation problems are converted to decision form by adding a threshold (k). Complexity theory studies decision problems because they are cleanly formalised as languages (sets of "yes" strings), and the optimisation version is never easier than the decision version (if you can optimise, you can decide).</div>
+<p>Input size is measured in bits. An algorithm is <i>polynomial</i> if it runs in O(n<sup>c</sup>) for input length n. Beware pseudo-polynomial times such as O(nW) for knapsack, which is exponential in the bit-length of W.</p>
+<h3>Reductions</h3>
+<div class="box">A <b>polynomial-time (Karp) reduction</b> A ≤<sub>p</sub> B is a function f computable in polynomial time such that for every input x: <b>x ∈ A ⇔ f(x) ∈ B</b>. Meaning: "B is at least as hard as A". If B ∈ P then A ∈ P; contrapositively, if A is hard then B is hard.</div>
+<div class="box warn"><b>Direction pitfall.</b> To prove a new problem X is hard, reduce a KNOWN hard problem TO X (known ≤<sub>p</sub> X). Reducing X to a known problem proves nothing about hardness. A correct reduction must preserve BOTH directions (yes→yes and no→no) and be computable in polynomial time (in particular the output size is polynomial).</div>
+<p>Reductions are transitive: A ≤<sub>p</sub> B and B ≤<sub>p</sub> C give A ≤<sub>p</sub> C (compose two polynomials). This is what makes chains of reductions work.</p>
+
+<h2>2. Classes P, NP, NP-hard, NP-complete</h2>
+<table><tr><th>Class</th><th>Definition</th><th>Example</th></tr>
+<tr><td>P</td><td>Decidable in polynomial time</td><td>Shortest path, MST, 2-SAT, matching</td></tr>
+<tr><td>NP</td><td>Yes-instances have a certificate checkable in polynomial time (equivalently, decidable by a nondeterministic poly-time machine)</td><td>SAT, Clique, Hamiltonian cycle, Subset Sum</td></tr>
+<tr><td>NP-hard</td><td>Every problem in NP reduces to it (need not be in NP)</td><td>Halting problem; optimisation TSP</td></tr>
+<tr><td>NP-complete</td><td>In NP and NP-hard</td><td>3-SAT, Vertex Cover, ...</td></tr></table>
+<p>Certificate/verifier idea: for Clique the certificate is the k vertices; the verifier checks that all C(k,2) pairs are edges in O(k²). P ⊆ NP (the verifier just solves the problem). Whether P = NP is open; if any NP-complete problem is in P then P = NP.</p>
+<div class="box key"><b>Recipe to prove X is NP-complete:</b> (1) show X ∈ NP by giving a poly-time verifier; (2) pick a known NP-complete Y and give a poly-time f with y ∈ Y ⇔ f(y) ∈ X; (3) prove correctness in both directions and the polynomial running time of f.</div>
+<p><b>co-NP</b>: complements of NP problems (certificate for "no"). P ⊆ NP ∩ co-NP; it is believed that NP ≠ co-NP.</p>
+
+<h2>3. SAT and the Cook–Levin theorem</h2>
+<p><b>SAT</b>: given a Boolean formula in CNF (AND of clauses, each an OR of literals), is there a truth assignment making it true? <b>3-SAT</b>: every clause has exactly 3 literals. <b>2-SAT</b> is in P (implication graph + SCCs), a classic contrast showing that going from 2 to 3 literals crosses the boundary.</p>
+<div class="box key"><b>Cook–Levin theorem:</b> SAT is NP-complete. Hence every problem in NP reduces to SAT.</div>
+<h3>Proof sketch</h3>
+<ul><li>SAT ∈ NP: certificate = assignment; evaluate the formula in linear time.</li>
+<li>NP-hardness: let L ∈ NP be decided by a nondeterministic TM M in time p(n). The computation is a p(n) × p(n) tableau of configurations (tape cell contents, head position, state). Introduce Boolean variables x<sub>i,j,s</sub> = "cell i at time j holds symbol s". Write clauses saying: (a) each cell holds exactly one symbol; (b) row 0 encodes input w; (c) each 2×3 window of the tableau is a legal move of M's transition relation (local checks suffice because a TM step changes only O(1) cells); (d) the last row contains the accepting state. The formula has O(p(n)²) size, is built in poly time, and is satisfiable iff M accepts w.</li></ul>
+<p>The formula-building function f is a reduction L ≤<sub>p</sub> SAT for every L ∈ NP. (Textbooks often go via Circuit-SAT, then Circuit-SAT → SAT with one variable per gate: for g = a ∧ b use (¬g∨a)(¬g∨b)(g∨¬a∨¬b).)</p>
+<h3>SAT ≤<sub>p</sub> 3-SAT</h3>
+<p>Clause (l<sub>1</sub> ∨ … ∨ l<sub>k</sub>): k=1: (l ∨ a ∨ b)(l ∨ ¬a ∨ b)(l ∨ a ∨ ¬b)(l ∨ ¬a ∨ ¬b) with fresh a,b. k=2: (l<sub>1</sub>∨l<sub>2</sub>∨a)(l<sub>1</sub>∨l<sub>2</sub>∨¬a). k&gt;3: chain with fresh y<sub>i</sub>: (l<sub>1</sub>∨l<sub>2</sub>∨y<sub>1</sub>)(¬y<sub>1</sub>∨l<sub>3</sub>∨y<sub>2</sub>)…(¬y<sub>k−3</sub>∨l<sub>k−1</sub>∨l<sub>k</sub>). Correctness: if some l<sub>j</sub> is true, set the y's true before position j and false after, satisfying every piece; conversely if all l<sub>i</sub> are false, y<sub>1</sub> must be true, forcing y<sub>2</sub>, and so on, so the last clause fails. Size grows by a constant factor.</p>
+
+<h2>4. Reduction chain: 3-SAT → Clique → Independent Set → Vertex Cover</h2>
+<div class="box">Definitions (G = (V,E), integer k). <b>Clique</b>: k vertices pairwise adjacent. <b>Independent Set (IS)</b>: k vertices with no edge among them. <b>Vertex Cover (VC)</b>: k vertices touching every edge. All three are in NP (certificate: the vertex set, checked in O(n²)).</div>
+<h3>4.1 3-SAT ≤<sub>p</sub> Clique</h3>
+<p><b>Construction.</b> Formula φ with m clauses C<sub>1</sub>..C<sub>m</sub>, three literals each. One vertex per literal occurrence (3m vertices), grouped in m triples. Join two vertices by an edge iff they are in <i>different</i> clauses and are <i>not contradictory</i> (not x and ¬x). Set k = m.</p>
+<p><b>Correctness.</b> (⇒) A satisfying assignment makes at least one literal true in each clause; pick one such vertex per clause. They lie in different clauses and no two contradict (all are true under one assignment), so they are pairwise adjacent: a clique of size m. (⇐) A clique of size m has no two vertices in the same clause (no edges inside a triple), so exactly one per clause. They are pairwise consistent, so set each chosen literal true (unmentioned variables arbitrary); every clause then has a true literal. <b>Size</b>: 3m vertices, O(m²) edges, poly time.</p>
+<p><b>Example.</b> φ = (x ∨ y ∨ z)(¬x ∨ ¬y ∨ z)(x ∨ ¬z ∨ y), m=3. Choose z from C1, z from C2, y from C3: z–z (different clauses, not contradictory), z–y and z–y fine: a triangle, so φ is satisfied by z=T, y=T.</p>
+<h3>4.2 Clique ≤<sub>p</sub> Independent Set</h3>
+<p>Take the complement graph Ḡ (edge iff non-edge in G); keep k. S is a clique in G ⇔ S is an independent set in Ḡ (all pairs are edges in G ⇔ no pair is an edge in Ḡ). Computable in O(n²).</p>
+<h3>4.3 Independent Set ≤<sub>p</sub> Vertex Cover</h3>
+<div class="box key"><b>Lemma:</b> S is an independent set of G ⇔ V∖S is a vertex cover of G. So G has an IS of size k ⇔ G has a VC of size n−k. The reduction is (G,k) ↦ (G, n−k).</div>
+<p>Proof: S independent ⇔ no edge has both ends in S ⇔ every edge has at least one end in V∖S ⇔ V∖S is a cover. Every step is an equivalence, so both directions hold. Hence the chain 3-SAT ≤ Clique ≤ IS ≤ VC makes Clique, IS and VC NP-complete (each is also in NP).</p>
+<div class="box warn"><b>Pitfalls:</b> k changes (k → n−k) for VC. In 3-SAT→Clique, forgetting the "different clause" condition would let a clique grab two literals from one clause. IS on bipartite graphs is in P (König's theorem / matching), so hardness needs general graphs.</div>
+
+<h2>5. Subset Sum</h2>
+<p><b>Problem.</b> Given positive integers a<sub>1</sub>..a<sub>n</sub> and target T, is there a subset summing exactly to T? In NP (certificate = the subset). Solvable by DP in O(nT), which is <i>pseudo-polynomial</i> (T is exponential in its bit-length), so there is no contradiction with NP-completeness; such problems are <b>weakly NP-complete</b>.</p>
+<h3>Reduction 3-SAT ≤<sub>p</sub> Subset Sum</h3>
+<p><b>Construction.</b> φ has variables x<sub>1</sub>..x<sub>n</sub> and clauses C<sub>1</sub>..C<sub>m</sub>. Build base-10 numbers with n+m digits (n variable digits, then m clause digits). For each variable x<sub>i</sub> create two numbers v<sub>i</sub> (x<sub>i</sub> true) and v'<sub>i</sub> (x<sub>i</sub> false): both have a 1 in variable digit i; v<sub>i</sub> also has a 1 in clause digit j for each clause C<sub>j</sub> containing x<sub>i</sub>, and v'<sub>i</sub> has a 1 in clause digit j if ¬x<sub>i</sub> ∈ C<sub>j</sub>. For each clause C<sub>j</sub> add two slack numbers s<sub>j</sub>, s'<sub>j</sub>, each with a single 1 in clause digit j. Target T has 1 in each variable digit and 3 in each clause digit.</p>
+<p><b>Correctness.</b> Each column sums to at most 5, so no carries occur and columns are independent. (⇒) From a satisfying assignment take v<sub>i</sub> if x<sub>i</sub> = T else v'<sub>i</sub>: each variable digit gets exactly 1. Clause digit j gets between 1 and 3 from literals (≥1 because the clause is satisfied); add s<sub>j</sub> and/or s'<sub>j</sub> to reach exactly 3. (⇐) Variable digit i equal to 1 forces exactly one of v<sub>i</sub>, v'<sub>i</sub>, defining an assignment. Clause digit j must reach 3 but slacks give at most 2, so at least one literal number contributes to digit j: clause j is satisfied. There are 2n+2m numbers of n+m digits: polynomial.</p>
+<h3>Example</h3>
+<p>φ = (x<sub>1</sub> ∨ ¬x<sub>2</sub>) (a 2-literal clause is fine: slack still tops up to 3). Columns (x1, x2, C1): v1 = 101, v'1 = 100, v2 = 010, v'2 = 011, s = s' = 001, T = 113. Assignment x1=T, x2=F: v1 + v'2 = 101 + 011 = 112; add one slack 001 to get 113 ✓.</p>
+
+<h2>6. Hamiltonian Cycle</h2>
+<p><b>Problem (HAM-CYCLE).</b> Does directed (or undirected) G contain a simple cycle visiting every vertex exactly once? In NP (certificate: the cyclic order). Compare Eulerian circuit (every edge once), which is in P via degree conditions.</p>
+<h3>Reduction 3-SAT ≤<sub>p</sub> Directed Ham Cycle (sketch of the standard gadgets)</h3>
+<ul><li>For each variable x<sub>i</sub>: a row of vertices with edges in both directions, plus a start s<sub>i</sub> and end t<sub>i</sub>. The row is traversed left-to-right (x<sub>i</sub> = true) or right-to-left (x<sub>i</sub> = false). Rows are chained (t<sub>i</sub> → s<sub>i+1</sub>) and the last returns to the first. Each row has 3 vertices per clause (plus separators) so each clause gets its own private adjacent pair.</li>
+<li>For each clause C<sub>j</sub>: one extra vertex c<sub>j</sub>. For each literal in C<sub>j</sub>, link that variable's private pair u, w with u→c<sub>j</sub>→w in the orientation matching the literal (left-to-right for x<sub>i</sub>, right-to-left for ¬x<sub>i</sub>), so the detour is available only if the row is traversed in the literal-satisfying direction.</li></ul>
+<p><b>Correctness.</b> (⇒) From a satisfying assignment, traverse each row in its variable's direction; for each clause detour once through c<sub>j</sub> via one true literal. Every vertex is visited exactly once. (⇐) A Hamiltonian cycle must visit each c<sub>j</sub> by a detour from one row, and the gadget design forces each row to be traversed wholly in one direction (otherwise vertices are skipped or repeated); read the assignment off the directions. Since every c<sub>j</sub> is visited, its clause has a true literal.</p>
+<h3>Directed → Undirected</h3>
+<p>Replace each vertex v by v<sub>in</sub> – v<sub>mid</sub> – v<sub>out</sub> (a path); each directed edge u→v becomes the undirected edge u<sub>out</sub>–v<sub>in</sub>. A directed Ham cycle exists iff the undirected one does (v<sub>mid</sub> has degree 2, so the path is traversed in order, enforcing direction).</p>
+<h3>Ham Cycle ≤<sub>p</sub> TSP</h3>
+<p>Complete graph on V, weight 1 for edges of G and 2 otherwise, budget n. A tour of cost ≤ n exists iff G has a Hamiltonian cycle. Hence decision-TSP is NP-complete; optimisation TSP is NP-hard.</p>
+<div class="box warn"><b>Pitfall:</b> Euler = edges (poly), Hamilton = vertices (NP-complete). Shortest path is in P; <i>longest</i> simple path is NP-hard (it contains Ham path).</div>
+
+<h2>7. Exact Cover</h2>
+<p><b>Problem.</b> Given universe U and a family F of subsets of U, is there a subfamily of pairwise disjoint sets whose union is U? (Variant <b>X3C</b>: each set has 3 elements, |U| = 3q, need q sets.) In NP (certificate: the subfamily; check disjointness and union in poly time).</p>
+<p><b>Standard route:</b> 3-SAT ≤<sub>p</sub> 3-Dimensional Matching ≤<sub>p</sub> Exact Cover (X3C), and Exact Cover ≤<sub>p</sub> Subset Sum.</p>
+<h3>Idea for 3-SAT → Exact Cover (via 3DM)</h3>
+<p>Variable gadget: a "wheel" of alternating elements forcing a choice of either all "true" sets or all "false" sets. Clause gadget: an element covered by exactly one chosen set corresponding to a true literal, with cleanup sets to cover leftover literal elements. Exactness (no overlap, nothing uncovered) ties the choices consistently. For exams know the statement, NP membership and the Exact Cover → Subset Sum step in full.</p>
+<h3>Exact Cover ≤<sub>p</sub> Subset Sum</h3>
+<p>Let U = {1..N}, sets S<sub>1</sub>..S<sub>M</sub>. Choose base b = M+1. Define a<sub>j</sub> = Σ<sub>i∈S<sub>j</sub></sub> b<sup>i−1</sup> (digit 1 at position i for each element i ∈ S<sub>j</sub>) and T = Σ<sub>i=1..N</sub> b<sup>i−1</sup> (all digits 1). Because b exceeds the number of sets, no column can carry, so a subfamily's numbers sum to T iff every element's column sum is exactly 1, i.e. each element is covered exactly once, i.e. an exact cover. This also shows Subset Sum is NP-complete from Exact Cover. Size: M numbers of N digits.</p>
+<p><b>Example.</b> U={1,2,3,4}, F={ {1,2}, {3,4}, {2,3}, {1,4} }. Exact covers: {1,2}+{3,4} and {2,3}+{1,4}. Contrast U={1,2,3}, F={ {1,2}, {2,3} }: none (they overlap on 2, and either alone leaves an element uncovered). With b=3: a = 3<sup>0</sup>+3<sup>1</sup> = 4 and 3<sup>1</sup>+3<sup>2</sup> = 12, T = 13; no subset sums to 13 ✓.</p>
+
+<h2>8. Map of reductions</h2>
+<pre><code>Circuit-SAT -&gt; SAT -&gt; 3-SAT -+-&gt; Clique -&gt; Independent Set -&gt; Vertex Cover
+                              +-&gt; Subset Sum
+                              +-&gt; Ham Cycle -&gt; TSP
+                              +-&gt; 3DM -&gt; Exact Cover -&gt; Subset Sum</code></pre>
+
+<h2>9. Coping with NP-hardness</h2>
+<p>Options: exact exponential algorithms (backtracking, branch and bound, subset DP such as Held–Karp TSP in O(n²2<sup>n</sup>)), special cases (trees, bipartite, bounded treewidth), <b>approximation algorithms</b> with provable guarantees, and <b>heuristics</b> (no guarantee).</p>
+
+<h2>10. Approximation algorithms</h2>
+<div class="box"><b>Approximation ratio:</b> for a minimisation problem, A is a ρ-approximation if for every instance cost(A) ≤ ρ · OPT (ρ ≥ 1) and A runs in polynomial time. For maximisation, cost(A) ≥ OPT/ρ. PTAS: (1+ε)-approximation for each fixed ε, poly in n; FPTAS: poly in n and 1/ε.</div>
+<h3>10.1 Vertex Cover: 2-approximation</h3>
+<pre><code>APPROX-VC(G):
+    C = {}
+    E' = E
+    while E' is not empty:
+        pick any edge (u, v) in E'
+        add u and v to C
+        remove from E' every edge incident to u or v
+    return C</code></pre>
+<p><b>Running time</b> O(V+E) with adjacency lists.</p>
+<div class="box key"><b>Theorem.</b> APPROX-VC returns a vertex cover with |C| ≤ 2·OPT.</div>
+<p><b>Proof.</b> <i>Feasibility:</i> every removed edge is covered by u or v and the loop ends only when no edge remains, so C is a cover. <i>Ratio:</i> let A be the set of picked edges. They form a matching (after picking (u,v), all edges touching u or v are deleted, so later picked edges share no endpoint with it). Any cover, in particular an optimal C*, contains at least one endpoint of each edge of A, and these endpoints are distinct, so |C*| ≥ |A|. The algorithm outputs |C| = 2|A| ≤ 2|C*|. ∎</p>
+<p><b>Example.</b> Path a–b–c–d. Pick (b,c) first: C = {b,c} covers all edges; OPT = 2, ratio 1. Pick (a,b) first: edges ab, bc removed; then pick (c,d): C = {a,b,c,d}, size 4 = 2·OPT, showing the factor 2 is tight for this algorithm (also for K<sub>n,n</sub>-style instances).</p>
+<div class="box warn"><b>Pitfalls:</b> Greedily choosing the highest-degree vertex gives only an O(log n) ratio. 2 is the best known constant (2 − ε is hard under the Unique Games Conjecture). The lower bound is a maximal matching, not the cover itself.</div>
+<h3>10.2 Other examples</h3>
+<ul><li><b>Metric TSP, 2-approx:</b> build an MST, take a preorder walk, shortcut repeated vertices. Cost ≤ 2·MST ≤ 2·OPT (triangle inequality). Christofides improves to 3/2. General TSP has no constant-factor approximation unless P = NP.</li>
+<li><b>Set Cover, greedy:</b> repeatedly pick the set covering most uncovered elements; ratio H<sub>n</sub> ≈ ln n.</li>
+<li><b>Makespan scheduling, list scheduling:</b> 2 − 1/m; LPT gives 4/3.</li>
+<li><b>Knapsack:</b> FPTAS by scaling profits and running the DP.</li>
+<li><b>Max-3SAT:</b> a random assignment satisfies 7/8 of clauses in expectation.</li></ul>
+
+<h2>11. Heuristic algorithms</h2>
+<p>Heuristics give good solutions fast but <b>no provable guarantee</b> on quality (sometimes none on running time either). Typical ones:</p>
+<ul><li><b>Greedy construction</b> (nearest-neighbour for TSP: repeatedly go to the nearest unvisited city; can be arbitrarily bad in the worst case).</li>
+<li><b>Local search / hill climbing</b>: start from a solution and repeatedly move to a better neighbour (e.g. 2-opt for TSP: replace two edges to remove a crossing) until a local optimum; can get stuck.</li>
+<li><b>Simulated annealing</b>: accept worse moves with probability e<sup>−Δ/T</sup>, lowering T gradually to escape local optima.</li>
+<li><b>Genetic algorithms, tabu search, branch and bound, SAT solvers (DPLL/CDCL)</b>: work well in practice on structured instances.</li></ul>
+<table><tr><th>Approximation</th><th>Heuristic</th></tr>
+<tr><td>Poly time, proven ratio on every instance</td><td>No worst-case guarantee</td></tr>
+<tr><td>Analysed via a lower bound on OPT</td><td>Judged empirically</td></tr></table>
+
+<h2>Quick revision</h2>
+<ul>
+<li>A ≤<sub>p</sub> B: poly-time f with x ∈ A ⇔ f(x) ∈ B; reduce FROM a known hard problem TO the new one.</li>
+<li>NP = poly-time verifiable; NPC = NP ∩ NP-hard; P ⊆ NP; P vs NP open.</li>
+<li>Cook–Levin: SAT is NP-complete (computation tableau → CNF of size O(p(n)²)).</li>
+<li>3-SAT → Clique: vertex per literal, edges between different clauses and consistent literals, k = m.</li>
+<li>Clique ↔ IS via complement graph; IS ↔ VC via S ↦ V∖S, k ↦ n−k.</li>
+<li>Subset Sum: digit construction with slack numbers, no carries; DP O(nT) is pseudo-polynomial (weakly NPC).</li>
+<li>Ham Cycle: variable rows (direction = truth) + clause vertices; directed→undirected via 3-vertex split; Ham Cycle ≤ TSP.</li>
+<li>Exact Cover → Subset Sum with base M+1 digits; Exact Cover is NPC.</li>
+<li>APPROX-VC: take both ends of an arbitrary uncovered edge; picked edges form a matching so |C| = 2|M| ≤ 2·OPT; tight.</li>
+<li>Metric TSP: MST + preorder walk = 2-approx; greedy Set Cover = ln n; heuristics (local search, annealing) have no guarantees.</li>
+</ul>
+</main></body></html>

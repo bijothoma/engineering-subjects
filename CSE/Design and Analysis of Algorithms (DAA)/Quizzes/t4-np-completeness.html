@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quiz 4 — NP-Completeness</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Quiz 4 — NP-Completeness</h1><div id="app"></div></main>
+<script>window.QUIZ={items:[
+{
+"q": "Which statement defines a problem being in NP?",
+"opts": [
+"It cannot be solved in polynomial time",
+"It requires exponential time to solve",
+"Every yes-instance has a certificate that can be verified in polynomial time",
+"Its complement is solvable in polynomial time"
+],
+"ans": 2,
+"why": "NP means poly-time verifiability of yes-instances. 'Not in P' is wrong because P is a subset of NP; exponential time is an upper-bound notion for known algorithms, not the definition; the complement statement describes co-NP-type behaviour."
+},
+{
+"q": "To prove a new problem X is NP-complete, after showing X is in NP you should:",
+"opts": [
+"Reduce a known NP-complete problem to X in polynomial time",
+"Reduce X to a known NP-complete problem",
+"Give an exponential algorithm for X",
+"Show X has no polynomial algorithm by brute force"
+],
+"ans": 0,
+"why": "Hardness transfers along the reduction: known-hard ≤p X means X is at least as hard. The reverse direction (X ≤p known) only shows X is no harder than that problem, which says nothing about hardness. Exponential algorithms or brute-force failure prove nothing."
+},
+{
+"q": "Which of these problems is known to be solvable in polynomial time?",
+"opts": [
+"3-SAT",
+"Vertex Cover",
+"2-SAT",
+"Hamiltonian Cycle"
+],
+"ans": 2,
+"why": "2-SAT is solved in linear time through the implication graph and strongly connected components. 3-SAT, Vertex Cover and Hamiltonian Cycle are NP-complete."
+},
+{
+"q": "If some NP-complete problem is shown to have a polynomial-time algorithm, then:",
+"opts": [
+"P ≠ NP",
+"P = NP",
+"Only that problem is in P",
+"NP-complete problems are all undecidable"
+],
+"ans": 1,
+"why": "Every NP problem reduces in polynomial time to an NP-complete one, so a poly algorithm for one gives poly algorithms for all of NP. It does not leave other problems out, and NP-complete problems are decidable."
+},
+{
+"q": "The Cook–Levin theorem states that:",
+"opts": [
+"SAT is in P",
+"3-SAT is in P",
+"SAT is NP-complete",
+"Every problem in NP is in P"
+],
+"ans": 2,
+"why": "Cook–Levin shows SAT is in NP and every NP problem reduces to it via a computation-tableau encoding. It is the first NP-complete problem; claims of membership in P would imply P = NP and are not proved."
+},
+{
+"q": "In the reduction 3-SAT to Clique with m clauses, the target clique size k is:",
+"opts": [
+"3m",
+"m/3",
+"2m",
+"m"
+],
+"ans": 3,
+"why": "One literal vertex is chosen per clause (a true one), so a satisfying assignment gives a clique of exactly m vertices. 3m is the total vertex count; no edges exist inside a clause triple so a bigger clique is impossible."
+},
+{
+"q": "In the 3-SAT to Clique construction, which pairs of literal vertices are joined by an edge?",
+"opts": [
+"Literals in different clauses that are not negations of each other",
+"Literals in the same clause",
+"All pairs of literals",
+"Only pairs of complementary literals"
+],
+"ans": 0,
+"why": "Edges represent compatibility: different clause (so one pick per clause) and consistent (no x with its negation). Same-clause edges would allow a clique picking two literals of one clause; complementary pairs are exactly the forbidden ones."
+},
+{
+"q": "A graph G has n = 10 vertices and a vertex cover of size 4. The largest independent set in G has size at least:",
+"opts": [
+"4",
+"5",
+"10",
+"6"
+],
+"ans": 3,
+"why": "S is independent iff V∖S is a vertex cover, so an independent set of size n−k = 6 exists (the complement of the cover). 4 is the cover size itself; 10 would require no edges."
+},
+{
+"q": "The standard reduction from Clique to Independent Set maps (G, k) to:",
+"opts": [
+"(G, n−k)",
+"(G, k)",
+"(complement of G, n−k)",
+"(complement of G, k)"
+],
+"ans": 3,
+"why": "A set of k vertices is pairwise adjacent in G exactly when it is pairwise non-adjacent in the complement graph, so k stays unchanged. The (G, n−k) form belongs to Independent Set to Vertex Cover."
+},
+{
+"q": "Which of the following is NOT a necessary property of a polynomial-time reduction f from A to B?",
+"opts": [
+"f must map every instance of A to a yes-instance of B",
+"f is computable in polynomial time",
+"x is a yes-instance of A iff f(x) is a yes-instance of B",
+"The size of f(x) is polynomial in the size of x"
+],
+"ans": 0,
+"why": "f maps yes-instances to yes-instances and no-instances to no-instances; mapping everything to a yes-instance would be useless. The other three properties are required (the output size bound follows from poly running time)."
+},
+{
+"q": "Using APPROX-VC (pick an arbitrary uncovered edge, add both endpoints) on the path a–b–c–d–e, a worst-case run returns a cover of size 4. The optimal size is 2. The ratio achieved is:",
+"opts": [
+"1",
+"2",
+"4",
+"1.5"
+],
+"ans": 1,
+"why": "Picking (a,b) then (c,d) gives {a,b,c,d}, size 4; the optimum {b,d} has size 2, so 4/2 = 2. The ratio equals the guaranteed bound, showing it is tight."
+},
+{
+"q": "Why does APPROX-VC output at most 2·OPT?",
+"opts": [
+"It always picks a maximum degree vertex",
+"It solves the LP relaxation exactly",
+"The picked edges form a matching, and any cover needs at least one endpoint per matching edge",
+"It tries all subsets of size OPT"
+],
+"ans": 2,
+"why": "Picked edges are vertex-disjoint, so OPT ≥ |matching| while the output has 2|matching| vertices. Max-degree greedy is a different algorithm with only an O(log n) guarantee; the algorithm is a simple linear-time loop, not LP or brute force."
+},
+{
+"q": "A 3-SAT formula has 5 clauses. How many vertices does the Clique instance produced by the standard reduction have?",
+"opts": [
+"5",
+"15",
+"10",
+"25"
+],
+"ans": 1,
+"why": "One vertex per literal occurrence: 3 per clause × 5 clauses = 15. The number 5 is k; 25 would come from a mistaken count of 5 literals per clause."
+},
+{
+"q": "The Subset Sum problem can be solved by dynamic programming in O(nT). Why does this not show P = NP?",
+"opts": [
+"The DP is incorrect for large n",
+"Subset Sum is not in NP",
+"T can be exponential in the number of bits encoding it, so O(nT) is pseudo-polynomial",
+"DP is only a heuristic"
+],
+"ans": 2,
+"why": "Input size is log T bits, so nT = n·2^(bits) is exponential in input length. The DP is correct and exact, and Subset Sum is in NP (the subset is a certificate), so the other options are wrong."
+},
+{
+"q": "In the 3-SAT to Subset Sum reduction with n variables and m clauses, how many numbers are created and how many decimal digits does each have?",
+"opts": [
+"2n + 2m numbers, each with n + m digits",
+"n + m numbers, each with 2n digits",
+"2n numbers, each with m digits",
+"n·m numbers, each with 3 digits"
+],
+"ans": 0,
+"why": "Two numbers per variable (true/false) plus two slack numbers per clause give 2n+2m; digits are n variable columns and m clause columns. For n=3, m=4 this is 14 numbers of 7 digits."
+},
+{
+"q": "In the 3-SAT to Subset Sum reduction, why are two slack numbers added per clause, with clause-column target 3?",
+"opts": [
+"Slacks make the sum carry into the next column",
+"A satisfied clause gets 1 to 3 from literal numbers and slacks (adding 0 to 2) top it up to exactly 3, while 0 literals can never reach 3",
+"They encode the variable's truth value",
+"They ensure every clause has exactly three true literals"
+],
+"ans": 1,
+"why": "Literals contribute at least 1 in a satisfied clause column, at most 3; two slacks add at most 2, so reaching 3 is possible iff at least one literal is true. Carries must not occur (columns sum to at most 5), and slacks do not encode variable values."
+},
+{
+"q": "Exact Cover with sets S1..SM over universe {1..N} is reduced to Subset Sum using numbers whose digits mark membership. Which base is safe?",
+"opts": [
+"Base 2",
+"Base M + 1 (greater than the number of sets)",
+"Base N",
+"Base 1"
+],
+"ans": 1,
+"why": "With a base above M, a column sum (at most M) never carries, so the total equals the all-ones target exactly when every element is covered exactly once. Base 2 would carry as soon as two sets share an element, allowing false matches; base N can be smaller than M; base 1 is not positional."
+},
+{
+"q": "Let U = {1,2,3,4,5,6}, F = {A={1,2,3}, B={4,5,6}, C={2,4,6}, D={1,3,5}}. Which subfamilies are exact covers of U?",
+"opts": [
+"{A,B} and {C,D}",
+"{A,B} only",
+"{A,C} and {B,D}",
+"{A,B,C}"
+],
+"ans": 0,
+"why": "A∪B = U with A∩B empty, and C∪D = U with C∩D empty. A and C overlap on 2, B and D overlap on 5, and {A,B,C} has overlapping members."
+},
+{
+"q": "Which reduction shows that decision TSP is NP-hard?",
+"opts": [
+"Shortest path: run Dijkstra n times",
+"Hamiltonian Cycle: give edges of G weight 1, non-edges weight 2, ask for a tour of cost ≤ n",
+"Minimum spanning tree: double the tree",
+"Vertex Cover: take complements"
+],
+"ans": 1,
+"why": "A tour of length ≤ n on a complete graph with weights 1 or 2 must use only weight-1 edges, i.e. edges of G, so it is a Hamiltonian cycle. MST doubling is an approximation, not a hardness reduction."
+},
+{
+"q": "Which pair is correctly matched with its complexity status?",
+"opts": [
+"Euler circuit (NP-complete) vs Hamiltonian cycle (poly-time)",
+"Euler circuit (poly-time) vs Hamiltonian cycle (NP-complete)",
+"Both are in P",
+"Both are NP-complete"
+],
+"ans": 1,
+"why": "Euler circuits exist iff the graph is connected with all degrees even (linear-time check). Hamiltonian cycle is the vertex-visiting problem and is NP-complete. The other options reverse or equalise the classification."
+},
+{
+"q": "In the standard transformation of a directed Hamiltonian cycle instance to an undirected one, each vertex v is replaced by:",
+"opts": [
+"A path v_in – v_mid – v_out, with each arc u→v becoming the edge u_out–v_in",
+"Two vertices joined by two parallel edges",
+"A single vertex with a self-loop",
+"A clique on three vertices"
+],
+"ans": 0,
+"why": "v_mid has degree 2, so any Hamiltonian cycle must traverse the path through v_mid, which encodes direction. The other gadgets do not enforce direction."
+},
+{
+"q": "The 2-approximation for metric TSP builds an MST and performs a preorder walk with shortcuts. The cost bound relies on:",
+"opts": [
+"Euler's formula for planar graphs",
+"Negative cycle detection",
+"The triangle inequality and OPT ≥ weight of the MST",
+"The max-flow min-cut theorem"
+],
+"ans": 2,
+"why": "Deleting one edge from the optimal tour yields a spanning tree, so MST ≤ OPT. The full preorder walk costs 2·MST and shortcuts never increase cost under the triangle inequality, giving ≤ 2·OPT."
+},
+{
+"q": "A greedy heuristic for Vertex Cover always picks the vertex covering the most uncovered edges. Compared to APPROX-VC (maximal matching), its worst-case guarantee is:",
+"opts": [
+"Better, ratio 1.5",
+"The same, ratio 2",
+"Worse, Θ(log n) rather than a constant 2",
+"Exact, it always finds the optimum"
+],
+"ans": 2,
+"why": "There are instances where max-degree greedy is off by a factor of order log n, so it has no constant guarantee. The matching-based algorithm guarantees 2. Neither is exact unless P = NP."
+},
+{
+"q": "Which statement about a ρ-approximation algorithm for a minimisation problem is correct?",
+"opts": [
+"It runs in polynomial time and returns a solution of cost at most ρ·OPT on every instance",
+"It returns cost at most ρ·OPT on average over random instances",
+"It returns the optimum whenever ρ is close to 1",
+"It may run in exponential time"
+],
+"ans": 0,
+"why": "The definition demands polynomial time and a worst-case (not average) guarantee. A ratio near 1 still does not mean optimal, and an exponential-time algorithm does not qualify."
+},
+{
+"q": "A problem X is in NP and a known NP-complete problem Y satisfies X ≤p Y. What can be concluded about X?",
+"opts": [
+"X is NP-complete",
+"X is in P",
+"X is NP-hard but not in NP",
+"Nothing about hardness: X could be easy or NP-complete"
+],
+"ans": 3,
+"why": "X ≤p Y only says X is no harder than Y. Many easy problems reduce to NP-complete ones (e.g. 2-SAT ≤p 3-SAT). NP-hardness would need a reduction in the other direction."
+},
+{
+"q": "Which pairing of a problem with a polynomial-time special case is correct?",
+"opts": [
+"Independent Set on bipartite graphs, solved via maximum matching (König)",
+"Clique on general graphs, solved by DFS",
+"Hamiltonian cycle on general graphs, solved by Dijkstra",
+"3-SAT, solved by implication graphs"
+],
+"ans": 0,
+"why": "In bipartite graphs the maximum independent set has size n minus the maximum matching size (König's theorem). The other three remain NP-complete; implication graphs only solve 2-SAT."
+},
+{
+"q": "A clause (l1∨l2∨l3∨l4∨l5) is converted to (l1∨l2∨y1)(¬y1∨l3∨y2)(¬y2∨l4∨l5) with fresh y1, y2. If l1..l5 are all false, why is the new formula unsatisfiable?",
+"opts": [
+"Because ¬y1 and ¬y2 are both forced",
+"Because y1 and y2 cannot both be assigned",
+"Because the three clauses share no literal",
+"The first clause forces y1 true, the second then forces y2 true, and the third clause is then falsified"
+],
+"ans": 3,
+"why": "With l1=l2=F the first clause needs y1=T; then ¬y1=F and l3=F force y2=T; then ¬y2=F with l4=l5=F leaves the last clause false. If any li is true, the y's can be chosen so every clause holds."
+},
+{
+"q": "In the 3-SAT to Hamiltonian-cycle reduction, a row of vertices per variable is traversed left-to-right or right-to-left. This choice encodes:",
+"opts": [
+"The number of satisfied clauses",
+"The size of the cover",
+"The cost of a TSP tour",
+"The truth value of the variable, which decides which clause detours are available"
+],
+"ans": 3,
+"why": "Direction = truth assignment; a clause vertex can be spliced into a row only in the orientation matching one of its literals, so the cycle visits all clause vertices iff each clause has a true literal."
+},
+{
+"q": "Which statement about NP-hard versus NP-complete is correct?",
+"opts": [
+"Every NP-hard problem is NP-complete",
+"Every NP-complete problem is NP-hard, but an NP-hard problem need not be in NP",
+"NP-hard problems are always decidable",
+"NP-complete problems are not in NP"
+],
+"ans": 1,
+"why": "NP-complete = NP-hard ∩ NP. The halting problem is NP-hard (every NP problem reduces to it) but undecidable and not in NP. NP-complete problems are by definition in NP."
+},
+{
+"q": "Subset Sum on {3, 5, 7, 9} with target T = 12 is solved by the standard boolean DP table with rows 0..n and columns 0..T. How many table cells are there, and is the answer yes?",
+"opts": [
+"4 × 12 = 48 cells; no",
+"5 × 13 = 65 cells; no",
+"4 × 13 = 52 cells; yes",
+"5 × 13 = 65 cells; yes (5 + 7 = 12 and 3 + 9 = 12)"
+],
+"ans": 3,
+"why": "The table has n+1 = 5 rows and T+1 = 13 columns, i.e. 65 cells, and 5+7 = 12 so the answer is yes. Counting n×T = 48 forgets the zero row and zero column; the other combinations pair the wrong size with the wrong answer."
+}
+]};</script><script src="../assets/quiz.js"></script></body></html>

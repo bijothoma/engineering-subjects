@@ -1,0 +1,94 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mid-Term Examination — CS3003E DAA (Paper CS02)</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Mid-Term Examination — CS3003E DAA (Paper CS02)</h1><p class="meta"><span>Time: 90 minutes</span><span>Max marks: 30</span></p><div id="app"></div></main>
+<script>window.EXAM={
+ "instructions": [
+  "Answer ALL questions. Total 30 marks (Part A: 5 x 2 = 10; Part B: 4 x 3 = 12; Part C: 2 x 4 = 8).",
+  "Scope: Topics T1 (binary search to median finding), T2 (greedy strategy to MST/Huffman) and T3 (DP principles to LIS). NP-completeness is not included.",
+  "Show intermediate steps; marks are awarded for method as well as the final answer."
+ ],
+ "sections": [
+  {
+   "name": "Part A — Short answer (5 x 2 = 10 marks)",
+   "note": "Answer all five questions.",
+   "qs": [
+    {
+     "q": "What is the worst-case number of comparisons made by binary search (three-way comparison per probe counted as one) on a sorted array of n = 1000 elements? Show the formula.",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "Worst case = ⌊log2 n⌋ + 1 probes. ⌊log2 1000⌋ = 9 (2^9 = 512 ≤ 1000 &lt; 1024 = 2^10), so <b>10 comparisons</b>."
+    },
+    {
+     "q": "State the merge sort recurrence and its solution. How many comparisons are needed at most to merge sorted arrays of sizes 4 and 5?",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "T(n) = 2T(n/2) + Θ(n) ⇒ Θ(n log n) (Master theorem case 2).<br>Merging sizes m and n needs at most m + n − 1 comparisons (each comparison outputs one element and the last element is free): 4 + 5 − 1 = <b>8</b>."
+    },
+    {
+     "q": "State the greedy algorithm for finding a maximum independent set in a tree and give the one-line reason why choosing a leaf is safe.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Repeat: pick a leaf, add it to the set, delete it and its neighbour (parent); continue on the remaining forest (isolated vertices are added directly). Safe because in any optimal solution that omits leaf ℓ, the parent p of ℓ must be in the solution (else add ℓ); swap p for ℓ — still independent and same size. Runs in O(n)."
+    },
+    {
+     "q": "Symbols a, b, c, d have frequencies 5, 2, 1, 1. Build the Huffman tree and compute the total number of bits needed to encode the text.",
+     "marks": 2,
+     "co": "CO2",
+     "ans": "Merge c+d = 2; then b(2) + 2 = 4; then a(5) + 4 = 9. Depths: a = 1, b = 2, c = d = 3.<br>Total bits = 5·1 + 2·2 + 1·3 + 1·3 = <b>15 bits</b> (equals the sum of merged weights 2+4+9). Fixed 2-bit code would need 18."
+    },
+    {
+     "q": "State the two properties that make dynamic programming applicable. Why does the naive recursion for Fibonacci take exponential time while memoisation takes O(n)?",
+     "marks": 2,
+     "co": "CO1",
+     "ans": "Optimal substructure (optimal solution built from optimal solutions of subproblems) and overlapping subproblems (the same subproblems recur).<br>Naive F(n)=F(n−1)+F(n−2) recomputes subproblems: the call tree has Θ(φ^n) nodes. Only n+1 distinct subproblems exist; storing each once gives O(n) time with O(1) work each."
+    }
+   ]
+  },
+  {
+   "name": "Part B — Short problems (4 x 3 = 12 marks)",
+   "note": "Answer all four questions.",
+   "qs": [
+    {
+     "q": "Use Quickselect (first element as pivot, partition into elements &lt; pivot and &gt; pivot) to find the 3rd smallest element of [7, 2, 9, 4, 1, 8, 5]. Show each recursive call. What is its worst-case time and expected time?",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "Call 1: pivot 7: L = {2,4,1,5} (4 elements), R = {9,8}. k=3 ≤ 4 → recurse on L with k=3.<br>Call 2: [2,4,1,5], pivot 2: L={1}, R={4,5}. |L|+1 = 2 &lt; 3 → recurse on R with k = 3 − 2 = 1.<br>Call 3: [4,5], pivot 4: L empty, k = 1 = |L|+1 → <b>answer 4</b> (sorted: 1,2,4,5,7,8,9).<br>Worst case Θ(n²) (bad pivots), expected O(n).<br>Marking: calls (2), complexities (1)."
+    },
+    {
+     "q": "Run the earliest-finish-time greedy on the intervals [1,4], [3,5], [0,6], [5,7], [3,9], [5,9], [6,10], [8,11], [8,12], [2,14], [12,16]. List the selected intervals and, in 2–3 lines, outline why the greedy choice is optimal.",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "Sorted by finish: 4,5,6,7,9,9,10,11,12,14,16. Select [1,4]; next with start ≥ 4: [5,7]; next start ≥ 7: [8,11]; next start ≥ 11: [12,16]. <b>4 intervals</b>.<br>Exchange argument: let g1 be the earliest-finishing interval and O any optimal solution with first interval o1. Since f(g1) ≤ f(o1), replacing o1 by g1 keeps O compatible and same size; induct on the remaining subproblem of intervals starting after f(g1).<br>Marking: selection (2), argument (1)."
+    },
+    {
+     "q": "Jobs (start, finish, weight): J1 (1,4,5), J2 (3,5,1), J3 (0,6,8), J4 (4,7,4), J5 (6,9,6). Sorted by finish time, compute p(j) and OPT(j) for j = 1..5, the optimal weight and the chosen jobs.",
+     "marks": 3,
+     "co": "CO2",
+     "ans": "p(j) = largest i &lt; j with f_i ≤ s_j: p1=0, p2=0 (f1=4 &gt; 3), p3=0, p4=1 (f1=4 ≤ 4), p5=3 (f3=6 ≤ 6).<br>OPT(j) = max(OPT(j−1), w_j + OPT(p(j))): OPT1=5, OPT2=max(5,1)=5, OPT3=max(5,8)=8, OPT4=max(8, 4+5)=9, OPT5=max(9, 6+8)=14.<br><b>Optimum 14</b> using J5 and J3 (J5 takes OPT(3); OPT(3) takes J3)."
+    },
+    {
+     "q": "Prove that any comparison-based algorithm that sorts 4 distinct numbers needs at least 5 comparisons in the worst case.",
+     "marks": 3,
+     "co": "CO1",
+     "ans": "The decision tree must have at least 4! = 24 leaves. A binary tree of height h has at most 2^h leaves, so 2^h ≥ 24 ⇒ h ≥ ⌈log2 24⌉ = ⌈4.58⌉ = 5. Thus some input needs 5 comparisons (the bound is tight: merge-insertion sorts 4 elements in 5 comparisons).<br>Marking: leaves = permutations (1), height inequality (1), numeric bound (1)."
+    }
+   ]
+  },
+  {
+   "name": "Part C — Design and analysis (2 x 4 = 8 marks)",
+   "note": "Answer both questions.",
+   "qs": [
+    {
+     "q": "A path has vertex weights [2, 7, 9, 3, 1, 5] (in order). (i) Define OPT(i) and justify the recurrence in two lines. (ii) Fill the table OPT(0..6). (iii) Recover an optimal independent set.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "(i) OPT(i) = max weight of an independent set among the first i vertices. Either vertex i is not used → OPT(i−1), or it is used, so vertex i−1 is excluded → w_i + OPT(i−2). OPT(0)=0, OPT(1)=w1.<br>(ii) OPT: 0, 2, 7, 11, 11, 12, 16 (OPT3 = max(7, 2+9) = 11; OPT4 = max(11, 7+3) = 11; OPT5 = max(11, 11+1) = 12; OPT6 = max(12, 11+5) = 16).<br>(iii) Backtrack: OPT6 used v6 (11+5) → OPT4 = OPT3 (not used v4) → OPT3 used v3 (2+9) → OPT1: v1. <b>Set {v1, v3, v6}, weight 2+9+5 = 16.</b><br>Marking: recurrence + justification (1), table (2), set (1)."
+    },
+    {
+     "q": "Fractional knapsack: n items with values v_i and weights w_i, capacity W. (i) Give the greedy algorithm. (ii) Prove optimality by an exchange argument. (iii) State its running time. (iv) Briefly say why the same greedy fails for 0/1 knapsack.",
+     "marks": 4,
+     "co": "CO2",
+     "ans": "(i) Sort items by v_i/w_i descending; take whole items while they fit; take the fitting fraction of the next item; stop.<br>(ii) Suppose an optimal solution O does not follow greedy order: there are items i (higher ratio) and j (lower ratio) with O taking less than full of i but some positive amount of j. Move a small weight δ from j to i: value change = δ(v_i/w_i − v_j/w_j) ≥ 0, still feasible. Repeating converts O to the greedy solution without loss, so greedy is optimal.<br>(iii) O(n log n) (sorting) plus O(n) scan.<br>(iv) Items are indivisible: e.g. (60,10),(100,20),(120,30), W=50: greedy takes first two = 160 but the optimum is 100+120 = 220.<br>Marking: algorithm (1), exchange (1.5), time (0.5), counterexample (1)."
+    }
+   ]
+  }
+ ]
+};</script><script src="../assets/exam.js"></script></body></html>
