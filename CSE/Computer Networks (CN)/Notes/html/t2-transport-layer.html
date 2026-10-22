@@ -1,0 +1,171 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Transport Layer</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>Transport Layer</h1>
+<p class="sub">Unit 2 (weeks 6-8) · Kurose &amp; Ross Ch. 3 (3.1-3.8) · also Peterson-Davie Ch. 5-6, Tanenbaum Ch. 6</p>
+
+<h2>1. Transport-layer services (K&amp;R 3.1)</h2>
+<div class="box"><b>Definition.</b> A transport protocol provides <i>logical communication between application processes</i> running on different hosts. The network layer provides logical communication between <i>hosts</i> (best-effort IP). Transport runs only in end systems; routers do not look at segments.</div>
+<ul>
+<li>Sender: breaks application messages into <b>segments</b>, passes them to the network layer. Receiver: reassembles and delivers to the right socket.</li>
+<li>Internet offers two: <b>UDP</b> (unreliable, unordered, connectionless) and <b>TCP</b> (reliable, in-order, flow control, congestion control, connection-oriented).</li>
+<li>Services NOT available at transport layer because IP is best-effort: delay guarantees and bandwidth guarantees.</li>
+</ul>
+
+<h2>2. Multiplexing and demultiplexing (3.2)</h2>
+<div class="box"><b>Idea.</b> Multiplexing: gather data from many sockets, add a header (source port, destination port) and hand it to IP. Demultiplexing: use header fields to deliver a segment to the correct socket. Ports are 16-bit; 0-1023 are well-known (80 HTTP, 53 DNS, 25 SMTP).</div>
+<pre><code>Segment header (common start):   | src port (16) | dst port (16) | ... other fields ... | application data |</code></pre>
+<table>
+<tr><th></th><th>UDP (connectionless demux)</th><th>TCP (connection-oriented demux)</th></tr>
+<tr><td>Socket identified by</td><td>(dst IP, dst port)</td><td>(src IP, src port, dst IP, dst port)</td></tr>
+<tr><td>Effect</td><td>Datagrams from different senders to the same dst port reach the SAME socket</td><td>Each connection has its own socket; a web server may run one process with many connection sockets, all on port 80</td></tr>
+</table>
+<p><b>Worked example.</b> Server listens on port 80. Hosts A and B each open one connection (client ports 26145 and 7532); A opens a second one from port 26146. Server has three connection sockets, told apart only by the 4-tuple, though every segment has dst port 80.</p>
+<div class="box warn"><b>Pitfall.</b> Saying "TCP demultiplexes by port number" - port alone is not enough; the whole 4-tuple is used.</div>
+
+<h2>3. UDP (3.3)</h2>
+<p>"Bare-bones" transport: multiplex/demux plus optional error checking. Header is 8 bytes: source port, dest port, length (header + data), checksum (2 bytes each).</p>
+<p><b>Why UDP?</b> no handshake delay (DNS, QUIC), no connection state at server, small header, no congestion control throttling (good for real-time, but can harm others). Used by DNS, SNMP, streaming, VoIP, and QUIC. Reliability, if needed, is added in the application.</p>
+<h3>Internet checksum</h3>
+<pre><code>sender:   treat segment (+ pseudo-header) as a sequence of 16-bit words
+          sum = 0
+          for each word w: sum = sum + w ; if carry out of bit 16: wrap around (add carry to LSB)
+          checksum = ~sum            (1's complement)
+receiver: add all words including checksum; result must be 1111111111111111, else error</code></pre>
+<p><b>Worked example</b> (K&amp;R). Words 0110011001100000, 0101010101010101, 1000111100001100.<br>
+first two: 1011101110110101; plus third: 1 0100101011000001 -&gt; wrap carry: 0100101011000010 (sum).<br>
+Checksum = 1's complement = <b>1011010100111101</b>. Receiver: sum + checksum = 1111111111111111, OK.</p>
+<div class="box warn"><b>Pitfalls.</b> The checksum cannot detect swapped 16-bit words or compensating errors (sum is commutative); it is weaker than a CRC. Detection is not correction: UDP just discards or passes the damaged data with a warning. Complexity: O(n) over the segment length.</div>
+
+<h2>4. Principles of reliable data transfer (3.4)</h2>
+<p>Goal: a reliable service abstraction over an unreliable channel that may corrupt, lose and (with long paths) reorder packets. We build it incrementally; communication is one-way data, two-way control.</p>
+<table>
+<tr><th>Protocol</th><th>Channel assumption</th><th>Mechanisms added</th></tr>
+<tr><td>rdt1.0</td><td>perfectly reliable</td><td>none (just send/receive)</td></tr>
+<tr><td>rdt2.0</td><td>bit errors</td><td>checksum, ACK / NAK, retransmission (stop-and-wait)</td></tr>
+<tr><td>rdt2.1/2.2</td><td>ACK/NAK may be corrupted</td><td>1-bit sequence number; 2.2 uses ACK(seq) only (duplicate ACK = NAK)</td></tr>
+<tr><td>rdt3.0</td><td>bit errors + loss</td><td>countdown timer, retransmit on timeout</td></tr>
+</table>
+<pre><code>rdt3.0 sender (alternating bit):
+state: wait for call 0 -&gt; make pkt(0, data, chk); udt_send; start_timer
+wait for ACK 0:  if corrupt or ack==1: do nothing
+                 if timeout: udt_send(pkt0); restart_timer
+                 if ACK 0 ok: stop_timer; go to "wait for call 1"
+receiver: if pkt ok and seq==expected: deliver, send ACK(seq); else send ACK(last good seq)</code></pre>
+<p><b>Correctness idea.</b> Sequence numbers distinguish new data from retransmissions; timer guarantees progress after loss; premature timeouts only cause harmless duplicates that the receiver discards.</p>
+<div class="box key"><b>Stop-and-wait performance.</b> Utilisation U = (L/R) / (RTT + L/R).<br>
+Example: L = 8000 bits, R = 1 Gbps, RTT = 30 ms: D = 8 µs, U = 0.008 / 30.008 = <b>0.00027</b> (0.027%); throughput ~ 267 kbps on a 1 Gbps link.<br>
+Pipelining with window N: U = N x D / (RTT + D). N = 3 gives 0.00080; N needed for ~100% is about (RTT + D)/D = 3751.</div>
+
+<h3>Pipelined protocols: Go-Back-N and Selective Repeat</h3>
+<table>
+<tr><th></th><th>Go-Back-N (GBN)</th><th>Selective Repeat (SR)</th></tr>
+<tr><td>Sender window</td><td>N packets, single timer for oldest unACKed</td><td>N packets, timer per packet</td></tr>
+<tr><td>ACKs</td><td>cumulative: ACK(n) = all up to n received</td><td>individual, per packet</td></tr>
+<tr><td>Receiver</td><td>window size 1; discards out-of-order, re-ACKs last in-order</td><td>window N; buffers out-of-order, delivers in order</td></tr>
+<tr><td>On timeout</td><td>resend all packets from base to nextseqnum-1</td><td>resend only the timed-out packet</td></tr>
+<tr><td>Seq space with k bits</td><td>window ≤ 2^k - 1</td><td>window ≤ 2^k / 2</td></tr>
+</table>
+<pre><code>GBN sender:
+  send(data): if nextseqnum &lt; base+N: send pkt; if base==nextseqnum start_timer; nextseqnum++
+              else refuse (window full)
+  on ACK(n):  base = n+1; if base==nextseqnum stop_timer else restart_timer
+  on timeout: restart_timer; resend pkts base..nextseqnum-1
+
+SR receiver: pkt n in [rcv_base, rcv_base+N-1]: ACK(n); buffer; if n==rcv_base deliver run of consecutive buffered pkts and advance rcv_base
+             pkt n in [rcv_base-N, rcv_base-1]: ACK(n) again (ACK was lost); else ignore</code></pre>
+<p><b>Worked example (GBN, N = 4).</b> Send 0,1,2,3; packet 1 lost. Receiver gets 0 (ACK 0), then discards 2 and 3 (re-sends ACK 0 twice). Timeout for 1: sender resends 1,2,3 (3 packets). SR would resend only 1 and receiver would have buffered 2, 3, ACKed individually.</p>
+<div class="box warn"><b>Pitfalls.</b> SR window larger than half the sequence space makes a retransmitted old packet look like new data (e.g. 3-bit space, window 5+). Window must also cover the bandwidth-delay product to keep the pipe full. Complexity: GBN simple receiver but wastes bandwidth on retransmissions (up to N per loss); SR needs buffers and per-packet timers.</div>
+
+<h2>5. TCP (3.5)</h2>
+<div class="box"><b>Properties.</b> Point-to-point (one sender, one receiver), reliable in-order <i>byte stream</i>, pipelined (window set by flow + congestion control), full duplex, connection-oriented (three-way handshake), MSS limits the segment payload (typically 1460 bytes over Ethernet).</div>
+<h3>Segment structure</h3>
+<pre><code>| src port 16 | dst port 16 |
+| sequence number 32 |
+| acknowledgement number 32 |
+| hdr len 4 | unused | URG ACK PSH RST SYN FIN | receive window 16 |
+| checksum 16 | urgent ptr 16 |
+| options (MSS, window scale, SACK, timestamps) | data ... |
+Header: 20 bytes without options.</code></pre>
+<ul>
+<li><b>Sequence number</b> = byte-stream number of the first data byte in the segment. <b>ACK number</b> = next byte expected from the other side (cumulative). Out-of-order handling is left to the implementation (usually buffers).</li>
+<li>Example: 500-byte segments with seq 1000, 1500, 2000. Receiver has bytes 1000-1999: ACK = <b>2000</b>. Telnet echo: A sends seq=42, ack=79, 'C'; B replies seq=79, ack=43, 'C'; A ACKs seq=43, ack=80 (piggybacking).</li>
+</ul>
+<h3>RTT estimation and timeout</h3>
+<pre><code>EstimatedRTT = (1-α)·EstimatedRTT + α·SampleRTT          α = 0.125
+DevRTT       = (1-β)·DevRTT + β·|SampleRTT - EstimatedRTT|   β = 0.25   (uses OLD EstimatedRTT)
+TimeoutInterval = EstimatedRTT + 4·DevRTT</code></pre>
+<p><b>Worked example.</b> Est = 100, Dev = 10, sample 120: Dev = 0.75·10 + 0.25·20 = 12.5; Est = 0.875·100 + 0.125·120 = 102.5; Timeout = 102.5 + 50 = <b>152.5 ms</b>. Next sample 80: Dev = 9.375 + 5.625 = 15; Est = 99.6875; Timeout = 99.6875 + 60 = <b>159.7 ms</b>.</p>
+<p>Initial timeout is 1 s; on timeout the interval is doubled (exponential backoff). <b>Karn's algorithm:</b> never sample RTT from retransmitted segments (ambiguous ACK). Only one segment at a time is timed.</p>
+<h3>Reliable data transfer in TCP</h3>
+<pre><code>loop forever:
+  data from app:   create segment (seq=NextSeqNum); start timer if not running; send; NextSeqNum += len
+  timeout:         retransmit the not-yet-ACKed segment with SMALLEST seq (only that one); double timeout; restart timer
+  ACK y received:  if y &gt; SendBase: SendBase = y; if unACKed segments remain, restart timer
+                   else (duplicate): count++; if count == 3: fast retransmit the segment starting at y</code></pre>
+<p>It is a hybrid of GBN (cumulative ACK, single timer) and SR (only the missing segment is resent, receiver buffers). <b>Receiver ACK policy:</b> in-order segment, previous ACKed: delay up to 500 ms for another; in-order with pending delayed ACK: send cumulative ACK immediately; out-of-order (gap): immediate duplicate ACK; segment that fills a gap: immediate ACK.</p>
+<p><b>Fast retransmit.</b> Segments 1,2,4,5,6 arrive (3 lost): 4,5,6 give three duplicate ACKs for 3's sequence number, so the sender resends segment 3 without waiting for the timer. Three (not one) avoids reacting to simple reordering.</p>
+<div class="box warn"><b>Pitfalls.</b> A premature timeout resends only one segment, not the window. ACK number is the NEXT byte, not the last received one. TCP does not "ack the ACK".</div>
+
+<h3>Flow control</h3>
+<p>Goal: the sender must not overflow the receiver's buffer. Receiver advertises <b>rwnd = RcvBuffer - (LastByteRcvd - LastByteRead)</b>; sender keeps <b>LastByteSent - LastByteAcked ≤ rwnd</b>. Example: RcvBuffer 4096, LastByteRcvd 3000, LastByteRead 1800: rwnd = 4096 - 1200 = <b>2896</b>. If rwnd = 0 the sender keeps sending 1-byte probe segments so it learns when space is free again. Window-limited throughput is at most window / RTT: 65535 B per 50 ms = <b>10.5 Mbps</b>, hence the window-scale option for long fat networks.</p>
+<div class="box warn"><b>Pitfall.</b> Flow control (receiver protection) is not congestion control (network protection); the effective window is min(cwnd, rwnd).</div>
+
+<h3>Connection management</h3>
+<pre><code>Open (3-way handshake):
+ client                          server
+  SYN, seq=x            ---&gt;     (allocate buffers)
+  SYN-ACK, seq=y, ack=x+1 &lt;---
+  ACK, seq=x+1, ack=y+1 ---&gt;     (may carry data)
+Close (4-way):  FIN  -&gt; ACK ;  FIN  &lt;- ACK ;  active closer waits in TIME_WAIT (2·MSL, e.g. 30-120 s)</code></pre>
+<p>Example: ISNs 400 and 900: third segment has seq=401, ack=901 (SYN and FIN each consume one sequence number). TIME_WAIT lets the final ACK be retransmitted and kills stray old segments. RST is sent if no matching socket exists (closed port). <b>SYN flood:</b> attacker leaves half-open connections; defence is <b>SYN cookies</b> (state encoded in the server ISN, no memory used until the final ACK). Simplified FSM states: CLOSED, LISTEN, SYN_SENT, SYN_RCVD, ESTABLISHED, FIN_WAIT_1/2, CLOSING, TIME_WAIT, CLOSE_WAIT, LAST_ACK.</p>
+
+<h2>6. Principles of congestion control (3.6)</h2>
+<p><b>Congestion</b> = too many sources sending too fast for the network to handle: long delays (queues) and loss. Scenarios: (1) one router, infinite buffer: delay grows without bound as rate → capacity; (2) finite buffer + retransmissions: throughput below the offered load, unneeded duplicates; (3) multihop: when a packet is dropped downstream, the upstream capacity used for it is wasted, which can drive throughput towards zero (congestion collapse).</p>
+<p>Approaches: <b>end-to-end</b> (TCP: infer from loss/delay) vs <b>network-assisted</b> (router feedback, ECN bits, ATM ABR).</p>
+
+<h2>7. TCP congestion control (3.7)</h2>
+<div class="box"><b>Idea.</b> Sender limits LastByteSent - LastByteAcked ≤ min(cwnd, rwnd); rate ≈ cwnd / RTT. cwnd changes: ACKs mean the network is delivering, so increase; loss means congestion, so decrease. TCP is "self-clocking".</div>
+<ul>
+<li><b>Slow start</b> (cwnd = 1 MSS, doubles every RTT: +1 MSS per ACK) until cwnd reaches ssthresh, or loss.</li>
+<li><b>Congestion avoidance</b> (additive increase): cwnd += MSS·(MSS/cwnd) per ACK, about +1 MSS per RTT.</li>
+<li><b>Loss</b> (multiplicative decrease): ssthresh = cwnd/2.
+ <ul><li><b>Timeout:</b> cwnd = 1 MSS, slow start (Tahoe and Reno).</li>
+ <li><b>3 duplicate ACKs:</b> Tahoe: cwnd = 1, slow start. Reno: <b>fast recovery</b>: cwnd = ssthresh + 3 MSS, +1 MSS per further dup ACK, deflate to ssthresh when new data is ACKed, then congestion avoidance.</li></ul></li>
+</ul>
+<pre><code>on ACK of new data:   if cwnd &lt; ssthresh: cwnd += MSS          (slow start)
+                      else:               cwnd += MSS*MSS/cwnd  (congestion avoidance)
+on timeout:           ssthresh = max(cwnd/2, 2 MSS); cwnd = 1 MSS
+on 3 dup ACKs (Reno): ssthresh = cwnd/2; cwnd = ssthresh + 3 MSS; retransmit</code></pre>
+<p><b>Worked trace</b> (units of MSS, per RTT; init ssthresh 16): cwnd = 1, 2, 4, 8, 16, 17, 18, 19. Timeout at 19: ssthresh = 9, restart 1, 2, 4, 8, 9, 10, ... With triple dup ACK at 20: ssthresh = 10, cwnd = 13 (Reno).</p>
+<h3>Throughput and fairness</h3>
+<p>AIMD sawtooth between W/2 and W: average throughput = <b>(3/4)·W / RTT</b>. Example: W = 40 segments, MSS 1000 B, RTT 100 ms: 0.75·40·8000/0.1 = 2.4 Mbps. With loss rate L: throughput ≈ <b>1.22·MSS / (RTT·√L)</b>. MSS 1460 B, RTT 100 ms, L = 10<sup>-4</sup>: 14.2 Mbps. To fill 10 Gbps at RTT 100 ms, MSS 1500 B: W ≈ 83,333 segments and L ≈ 2·10<sup>-10</sup>, which is unrealistic, hence new high-speed variants.</p>
+<div class="box key"><b>Fairness.</b> K connections sharing a bottleneck of rate R each get about R/K under AIMD (the trajectory converges to the equal-share line since additive steps are equal and multiplicative cuts hurt the larger flow more). Fairness is per connection, so a host opening 9 parallel connections against a host with 1 gets 9R/10. UDP flows are not cwnd-limited and can squeeze TCP out.</div>
+<p><b>ECN (explicit congestion notification):</b> routers mark IP header bits (instead of dropping) and the receiver echoes via TCP ECE flag; the sender reduces cwnd as for loss.</p>
+<div class="box warn"><b>Pitfalls.</b> cwnd resets to 1 on timeout but NOT to 1 in Reno fast recovery. Slow start is exponential, not slow. ssthresh is half of cwnd at loss, not half of the old ssthresh. Delay-based schemes treat rising RTT, not loss, as congestion.</div>
+
+<h2>8. New versions of TCP and emerging transports (3.7, 3.8, class topics)</h2>
+<table>
+<tr><th>Protocol</th><th>Key idea</th><th>Where it helps</th></tr>
+<tr><td>Tahoe / Reno / NewReno</td><td>AIMD; fast retransmit; fast recovery; NewReno handles multiple losses in a window using partial ACKs</td><td>baseline Internet</td></tr>
+<tr><td>SACK</td><td>receiver reports received blocks so multiple holes are recovered in one RTT</td><td>bursty loss</td></tr>
+<tr><td>CUBIC</td><td>window is a cubic function of time since last loss; fast probing far from W<sub>max</sub>, flat near it; RTT-independent growth. Linux default</td><td>high bandwidth-delay paths</td></tr>
+<tr><td>Vegas / delay-based</td><td>detect queue build-up through rising RTT and back off before loss</td><td>low loss, low queueing</td></tr>
+<tr><td>BBR</td><td>estimates bottleneck bandwidth and min RTT; paces at BtlBw with about one BDP in flight</td><td>lossy / long-delay / bufferbloated paths</td></tr>
+<tr><td>DCTCP</td><td>uses ECN marks proportionally: cwnd reduced by a fraction α/2 of marked packets</td><td>data centres, low queue</td></tr>
+<tr><td>QUIC</td><td>user-space transport over UDP: combined transport+TLS 1.3 handshake (1 RTT, 0-RTT on resumption), multiple independent streams (no transport head-of-line blocking), connection IDs (survives IP change), per-packet encryption and its own loss recovery/congestion control (Reno/CUBIC/BBR). Basis of HTTP/3</td><td>web, mobile</td></tr>
+</table>
+<div class="box warn"><b>Pitfall.</b> QUIC still has congestion control and reliability; UDP is only the carrier. Head-of-line blocking is removed per stream, not globally.</div>
+
+<h2>Quick revision</h2>
+<ul>
+<li>Transport = process-to-process; UDP demux by 2-tuple, TCP by 4-tuple.</li>
+<li>UDP header 8 B; checksum = 1's complement of wrapped 16-bit sum (swapped words go undetected).</li>
+<li>rdt: checksum → ACK/NAK → seq numbers → timers; stop-and-wait U = D/(RTT + D); pipelining multiplies by N.</li>
+<li>GBN: cumulative ACK, receiver window 1, resend all; SR: per-packet ACK/timer, buffers; SR window ≤ half the seq space, GBN ≤ 2^k - 1.</li>
+<li>TCP: byte-stream seq numbers; ACK = next byte expected; Timeout = EstRTT + 4·Dev; α = 1/8, β = 1/4; Karn's rule; fast retransmit after 3 dup ACKs.</li>
+<li>Flow control: rwnd = RcvBuffer - (LastByteRcvd - LastByteRead); throughput ≤ window/RTT.</li>
+<li>Handshake: SYN(x), SYN-ACK(y, x+1), ACK(x+1, y+1); TIME_WAIT 2 MSL; SYN cookies against SYN floods.</li>
+<li>Congestion: slow start (exponential) → congestion avoidance (+1 MSS/RTT); timeout: ssthresh = cwnd/2, cwnd = 1; Reno 3 dupACKs: cwnd = ssthresh + 3.</li>
+<li>Throughput = 0.75·W/RTT = 1.22·MSS/(RTT·√L); fairness per connection; ECN marks instead of drops.</li>
+<li>CUBIC, BBR, DCTCP, SACK, QUIC (UDP-based, 0/1-RTT handshake, independent streams) are the "new" transports.</li>
+</ul>
+</main></body></html>

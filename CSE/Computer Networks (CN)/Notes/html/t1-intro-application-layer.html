@@ -1,0 +1,219 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Introduction &amp; Application Layer</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>Introduction &amp; Application Layer</h1>
+<p class="sub">Weeks 1-5 · Kurose &amp; Ross Ch. 1 (1.1-1.7) and Ch. 2 (2.1-2.7); Peterson-Davie Ch. 1, 9; Tanenbaum Ch. 1, 7</p>
+
+<h2>1. Computer networks and the Internet (K&amp;R 1.1)</h2>
+<div class="box"><b>Definition.</b> The Internet is a network of networks: billions of hosts (end systems) connected by communication links (fiber, copper, radio) and packet switches (routers, link-layer switches). A <b>protocol</b> defines the format and order of messages exchanged and the actions taken on sending or receiving a message.</div>
+<ul>
+<li><b>Nuts and bolts view:</b> hosts, links, packet switches, ISPs, protocols (TCP, IP, HTTP, 802.11), standards (IETF RFCs, IEEE).</li>
+<li><b>Services view:</b> infrastructure providing services to distributed applications through a socket interface.</li>
+</ul>
+
+<h2>2. The network edge (K&amp;R 1.2)</h2>
+<p>The edge contains hosts (clients and servers) and the <b>access networks</b> that connect them to the first router (edge router).</p>
+<table>
+<tr><th>Access technology</th><th>Medium</th><th>Notes</th></tr>
+<tr><td>DSL</td><td>Telephone twisted pair</td><td>Dedicated line to DSLAM; asymmetric up/down rates, frequency-division multiplexed with voice</td></tr>
+<tr><td>Cable (HFC)</td><td>Coax + fiber</td><td>Shared medium in the neighbourhood; frequency division channels</td></tr>
+<tr><td>FTTH / PON</td><td>Fiber</td><td>Highest rates; passive optical splitters</td></tr>
+<tr><td>Ethernet / WiFi</td><td>Twisted pair / radio</td><td>Institutional and home LANs</td></tr>
+<tr><td>Cellular 4G/5G</td><td>Radio</td><td>Wide-area wireless access</td></tr>
+</table>
+<p>Physical media: guided (twisted pair, coax, fiber) versus unguided (terrestrial radio, satellite). Fiber has very low attenuation and high capacity; radio suffers from fading, interference and multipath.</p>
+
+<h2>3. The network core (K&amp;R 1.3)</h2>
+<h3>3.1 Packet switching</h3>
+<div class="box"><b>Store-and-forward:</b> a router must receive an entire packet before it begins to transmit the first bit onto the outgoing link. Over N links in series, each of rate R, a packet of L bits takes N·L/R (ignoring propagation and queueing).</div>
+<p><b>Queueing and loss:</b> if the arrival rate exceeds the output rate, packets queue in the output buffer; if the buffer is full they are dropped.</p>
+<p><b>Forwarding vs routing:</b> forwarding is the local action of moving a packet from input to output link using a forwarding table; routing is the global process of determining the end-to-end path and filling the tables.</p>
+<h3>3.2 Circuit switching</h3>
+<p>Resources (bandwidth slices) are reserved for the duration of the call, by frequency-division (FDM) or time-division multiplexing (TDM). Guaranteed performance but idle capacity is wasted. Example: a TDM link of 1.536 Mbps with 24 slots gives 64 kbps per call.</p>
+<h3>3.3 Packet vs circuit switching: statistical multiplexing</h3>
+<p>Worked example: a 1 Mbps link, users sending 100 kbps when active, active 10% of the time. Circuit switching supports 10 users. With packet switching and 35 users, the number of active users is Binomial(35, 0.1) and the probability that more than 10 are active is P(X &gt; 10) = Σ C(35,k)(0.1)^k(0.9)^(35-k) for k = 11..35 ≈ 0.000424 (0.04%). Mean number active is 3.5, so packet switching supports more than 3x the users with only brief queueing.</p>
+<pre><code>P(X &gt; 10) for n=35, p=0.1:
+  = sum_{k=11}^{35} C(35,k) * 0.1^k * 0.9^(35-k)  ~= 4.2e-4</code></pre>
+<div class="box warn"><b>Pitfall.</b> Packet switching is "great for bursty data" but gives no guarantees for constant-rate traffic such as voice without extra mechanisms; it does not eliminate queueing, it creates it.</div>
+<h3>3.4 Network of networks</h3>
+<p>Access ISPs connect to regional ISPs and Tier-1 ISPs, interconnected via peering links and IXPs; content providers (Google etc.) run private networks and CDNs to bring content close to users. Resulting structure is a multi-tier, partially flat hierarchy.</p>
+
+<h2>4. Delay, loss and throughput (K&amp;R 1.4)</h2>
+<h3>4.1 Four sources of delay</h3>
+<div class="box key"><b>d<sub>nodal</sub> = d<sub>proc</sub> + d<sub>queue</sub> + d<sub>trans</sub> + d<sub>prop</sub></b><br>
+d<sub>trans</sub> = L/R (packet length in bits / link rate in bps)<br>
+d<sub>prop</sub> = d/s (link length / propagation speed, about 2 x 10<sup>8</sup> m/s in cable and fiber, 3 x 10<sup>8</sup> in air)</div>
+<table>
+<tr><th>Delay</th><th>Depends on</th><th>Typical size</th></tr>
+<tr><td>Processing</td><td>Header check, lookup</td><td>microseconds</td></tr>
+<tr><td>Queueing</td><td>Congestion, variable</td><td>µs to ms</td></tr>
+<tr><td>Transmission</td><td>L and R only</td><td>µs to ms</td></tr>
+<tr><td>Propagation</td><td>Distance and medium only</td><td>µs to 100s of ms</td></tr>
+</table>
+<p><b>Worked example.</b> L = 1000 bytes = 8000 bits, R = 1 Mbps, 2500 km at 2.5 x 10<sup>8</sup> m/s: d<sub>trans</sub> = 8 ms, d<sub>prop</sub> = 10 ms, so the last bit arrives 18 ms after the sender starts transmitting. Bits "in flight" on the link when transmission ends = R·d<sub>prop</sub> = 10<sup>6</sup> x 0.01 = 10,000 bits (the delay-bandwidth product).</p>
+<p><b>Example (segmentation).</b> A 7.5 Mbit message over 2 links of 1.5 Mbps: as one packet, 5 s per link gives 10 s. In 5000 packets of 1500 bits, each takes 1 ms per link and the links pipeline: (5000 + 1) x 1 ms = 5.001 s.</p>
+<h3>4.2 Queueing delay and traffic intensity</h3>
+<p>Let a be the average arrival rate (packets/s), L packet size, R link rate. Traffic intensity ρ = La/R. If ρ ≈ 0 delay is small; as ρ → 1 the average delay grows rapidly; ρ &gt; 1 gives unbounded growth (loss with finite buffers). Design rule: keep ρ well below 1.</p>
+<h3>4.3 Loss, end-to-end delay, traceroute</h3>
+<p>Total end-to-end delay = sum of nodal delays over the N-1 routers on the path (plus transmission at the source). <code>traceroute</code> sends probes with increasing TTL; each router that drops the expired packet returns an ICMP message, giving a per-hop RTT estimate. Lost packets may be retransmitted by the previous node, the source, or not at all.</p>
+<h3>4.4 Throughput</h3>
+<p>Instantaneous throughput = rate at which the receiver gets bits; average = F/T. For a path of links with rates R<sub>1</sub>..R<sub>n</sub>, the end-to-end throughput is min(R<sub>i</sub>): the <b>bottleneck link</b>. When N connections share a common link of rate R with per-connection access rates R<sub>s</sub> and R<sub>c</sub>: throughput = min(R<sub>s</sub>, R<sub>c</sub>, R/N). Example: R<sub>s</sub> = 2 Mbps, R<sub>c</sub> = 1 Mbps, R = 5 Mbps, N = 10: min(2, 1, 0.5) = 0.5 Mbps.</p>
+
+<h2>5. Protocol layers and service models (K&amp;R 1.5)</h2>
+<table>
+<tr><th>Layer</th><th>Unit</th><th>Function / examples</th></tr>
+<tr><td>Application</td><td>Message</td><td>HTTP, SMTP, DNS</td></tr>
+<tr><td>Transport</td><td>Segment</td><td>Process-to-process delivery: TCP, UDP</td></tr>
+<tr><td>Network</td><td>Datagram</td><td>Host-to-host routing: IP, routing protocols</td></tr>
+<tr><td>Link</td><td>Frame</td><td>Hop-to-hop: Ethernet, 802.11</td></tr>
+<tr><td>Physical</td><td>Bits</td><td>Bits on the wire</td></tr>
+</table>
+<p><b>Encapsulation:</b> each layer adds its header to the payload from above (message → segment → datagram → frame); routers examine only the layers up to the network layer, link-layer switches only up to the link layer. The OSI model adds presentation and session layers, which the Internet leaves to applications. The <b>end-to-end principle</b> places reliability and similar functions in end hosts.</p>
+<div class="box idea"><b>Idea.</b> Layering gives modularity: each layer can change implementation without affecting others; its cost is some duplicated functionality and hidden information.</div>
+
+<h2>6. Application layer: principles (K&amp;R 2.1)</h2>
+<h3>6.1 Architectures</h3>
+<ul>
+<li><b>Client-server:</b> always-on server with a fixed IP; clients communicate only with the server (Web, mail). Scaling needs data centers.</li>
+<li><b>Peer-to-peer (P2P):</b> arbitrary end systems communicate directly; self-scalability but harder to manage (BitTorrent, Skype-style systems).</li>
+</ul>
+<p>A <b>process</b> communicates through a <b>socket</b>; it is identified by IP address plus port number. The application chooses a transport service by requirements: data integrity, throughput, timing, security. TCP offers reliable, in-order byte streams with flow and congestion control (no timing or throughput guarantees); UDP offers an unreliable datagram service with no set-up.</p>
+
+<h3>6.2 P2P file distribution: scalability</h3>
+<div class="box key">Client-server: D<sub>cs</sub> = max(N·F/u<sub>s</sub>, F/d<sub>min</sub>)<br>P2P: D<sub>p2p</sub> = max(F/u<sub>s</sub>, F/d<sub>min</sub>, N·F/(u<sub>s</sub> + Σu<sub>i</sub>))</div>
+<p>Worked example: F = 10 Gbit, N = 10, u<sub>s</sub> = 30 Mbps, each u = 2 Mbps, d<sub>min</sub> = 10 Mbps. D<sub>cs</sub> = max(3333.3, 1000) = 3333 s. D<sub>p2p</sub> = max(333.3, 1000, 100000/50 = 2000) = 2000 s. As N grows D<sub>cs</sub> grows linearly while D<sub>p2p</sub> saturates, since every peer adds upload capacity.</p>
+<p><b>BitTorrent:</b> a torrent of peers exchanging 256 KB chunks; a tracker lists peers. A peer requests the <i>rarest</i> chunks first and sends data to the four peers currently sending it data at the highest rate (<i>tit-for-tat</i> / choking), plus one randomly chosen peer (optimistic unchoke).</p>
+<p><b>DHT (distributed hash table):</b> (key, value) pairs are spread over peers; a key is stored at the peer with the ID closest to the key (e.g. closest successor). With peers 1, 3, 4, 5, 8, 10, 12, 14: key 13 → peer 14; key 15 → wraps to peer 1. A circular DHT with shortcuts reduces lookup to O(log N) messages.</p>
+
+<h2>7. The Web and HTTP (K&amp;R 2.2)</h2>
+<p>A web page has a base HTML file plus referenced objects, each addressed by a URL (host + path). HTTP is a client-server request/response protocol over TCP (port 80; HTTPS over TLS on port 443). It is <b>stateless</b>.</p>
+<pre><code>GET /dir/page.html HTTP/1.1
+Host: www.example.edu
+Connection: keep-alive
+User-agent: Mozilla/5.0
+Accept-language: en
+
+HTTP/1.1 200 OK
+Date: ...
+Content-Length: 6821
+Content-Type: text/html
+
+(data...)</code></pre>
+<p>Methods: GET, POST, HEAD, PUT, DELETE. Status codes: 200 OK, 301 Moved Permanently, 304 Not Modified, 400 Bad Request, 404 Not Found, 505 HTTP Version Not Supported.</p>
+<h3>7.1 Non-persistent vs persistent</h3>
+<p>Non-persistent: 2 RTT + transmission time per object (1 RTT to open TCP, 1 RTT for request/response). Persistent (HTTP/1.1 default): the connection remains open; without pipelining each object costs 1 RTT, with pipelining a single RTT can fetch all referenced objects. Browsers also open parallel connections.</p>
+<p><b>Worked example.</b> Base file + 5 objects, RTT = 50 ms, negligible transmission times:</p>
+<table>
+<tr><th>Mode</th><th>Computation</th><th>Total</th></tr>
+<tr><td>Non-persistent, serial</td><td>6 x 2 x 50</td><td>600 ms</td></tr>
+<tr><td>Persistent, no pipelining</td><td>2 x 50 + 5 x 50</td><td>350 ms</td></tr>
+<tr><td>Persistent, pipelining</td><td>2 x 50 + 1 x 50</td><td>150 ms</td></tr>
+</table>
+<p>HTTP/2 multiplexes prioritised streams in one TCP connection (reducing head-of-line blocking at the HTTP level); HTTP/3 runs over QUIC/UDP.</p>
+<h3>7.2 Cookies</h3>
+<p>Four components: Set-Cookie header in the response, Cookie header in later requests, a cookie file on the user's host, and a back-end database at the site. Used for authentication, shopping carts, recommendations, session state. Privacy concern: tracking, third-party cookies.</p>
+<h3>7.3 Web caching (proxy servers) and conditional GET</h3>
+<p>A cache serves requests locally if it has the object; otherwise it fetches from the origin. It reduces response time, institutional access-link traffic and origin load. <b>Conditional GET</b>: request with <code>If-Modified-Since: &lt;date&gt;</code>; server replies 304 Not Modified (no body) if unchanged.</p>
+<p><b>Worked example (access link).</b> Objects of 100,000 bits at 15 requests/s offer 1.5 Mbps over a 2 Mbps access link: ρ = 0.75 (delay already large). With a 40% hit rate, only 0.6 x 1.5 = 0.9 Mbps crosses the link: ρ = 0.45. Expected delay with hit time 10 ms and miss time 200 ms: 0.4 x 10 + 0.6 x 200 = 124 ms.</p>
+<p><b>CDNs</b> store copies of content in clusters near users; DNS redirection (or HTTP redirect) sends a client to a nearby cluster. <b>Web 2.0/3.0:</b> Web 2.0 is interactive, user-generated, AJAX/API-driven content; Web 3.0 refers to semantic and decentralised (blockchain-based, user-owned data) web proposals.</p>
+<div class="box warn"><b>Pitfalls.</b> HTTP being stateless does not mean the TCP connection is closed. A 304 response has no body. The persistent-connection RTT counts depend on whether pipelining is assumed.</div>
+
+<h2>8. DNS (K&amp;R 2.4)</h2>
+<div class="box"><b>Idea.</b> A distributed, hierarchical database mapping hostnames to IP addresses (plus aliasing, mail-server lookup and load distribution), running over UDP port 53.</div>
+<p><b>Hierarchy:</b> root servers → top-level domain (TLD) servers (.com, .edu, .in) → authoritative servers for organisations. A <b>local DNS server</b> (default resolver) is not strictly in the hierarchy and acts as a proxy for hosts.</p>
+<pre><code>resolve(name):                      # iterative, from local DNS server
+    if name in cache: return cache[name]
+    ns = root_server
+    while ns is not authoritative for name:
+        reply = query(ns, name)
+        if reply has A record: break
+        ns = reply.referral           # next-level server
+    cache[name] = reply (with TTL)
+    return reply</code></pre>
+<p><b>Iterative vs recursive:</b> recursive – the queried server resolves on the client's behalf (heavier load at upper levels); iterative – the server returns a referral. Typically host→local server is recursive and the local server→hierarchy is iterative. Caching of results (TTL-based) means roots are rarely contacted.</p>
+<table>
+<tr><th>Type</th><th>Name</th><th>Value</th></tr>
+<tr><td>A</td><td>hostname</td><td>IPv4 address</td></tr>
+<tr><td>AAAA</td><td>hostname</td><td>IPv6 address</td></tr>
+<tr><td>NS</td><td>domain</td><td>authoritative DNS server</td></tr>
+<tr><td>CNAME</td><td>alias</td><td>canonical name</td></tr>
+<tr><td>MX</td><td>domain</td><td>mail server name</td></tr>
+</table>
+<p>Messages (query and reply) share one format: 16-bit identifier, flags, counts, then question, answer, authority and additional sections. Records are added through a registrar (e.g. NS and glue A record at the parent TLD). Attacks: DDoS on roots, cache poisoning, spoofing (mitigated by DNSSEC).</p>
+<p><b>Worked example.</b> Resolving www.nitc.ac.in with an empty cache: local server asks root (referral to .in TLD), asks the .in TLD (referral to the next level), then asks authoritative servers until an A record is returned: 4 iterative queries if ac.in and nitc.ac.in are separate delegations. With cached NS records only the last query is needed.</p>
+
+<h2>9. E-mail: SMTP, POP3, IMAP (K&amp;R 2.3)</h2>
+<p>Components: user agents, mail servers (mailbox and outgoing message queue), SMTP. SMTP (TCP port 25) is a <b>push</b> protocol, uses persistent connections, requires 7-bit ASCII messages (MIME encodes binary data), and ends the body with a line holding only a period.</p>
+<pre><code>S: 220 mail.example.edu
+C: HELO alice.org
+S: 250 Hello
+C: MAIL FROM: &lt;alice@alice.org&gt;
+S: 250 OK
+C: RCPT TO: &lt;bob@example.edu&gt;
+S: 250 OK
+C: DATA
+S: 354 End data with &lt;CR&gt;&lt;LF&gt;.&lt;CR&gt;&lt;LF&gt;
+C: Subject: Hi ... body ...
+C: .
+S: 250 Message accepted
+C: QUIT
+S: 221 Bye</code></pre>
+<table>
+<tr><th>Protocol</th><th>Role</th><th>Key features</th></tr>
+<tr><td>SMTP</td><td>Send / relay</td><td>Push; server to server and user agent to server</td></tr>
+<tr><td>POP3</td><td>Retrieve</td><td>Authorization, transaction (list, retr, dele), update phases; typically download-and-delete; stateless across sessions, no folders</td></tr>
+<tr><td>IMAP</td><td>Retrieve / manage</td><td>Keeps messages on the server, folders, partial fetch, state across sessions</td></tr>
+<tr><td>HTTP</td><td>Web mail</td><td>Browser to server; server uses SMTP between servers</td></tr>
+</table>
+<div class="box warn"><b>Pitfall.</b> SMTP vs HTTP: SMTP pushes, HTTP pulls; SMTP puts all objects in one multi-part message while HTTP encapsulates each object in its own response.</div>
+
+<h2>10. Multimedia and streaming applications (K&amp;R 2.6, Ch. 9 ideas)</h2>
+<ul>
+<li><b>Audio/video basics:</b> sampling and quantisation (e.g. 8000 samples/s x 8 bits = 64 kbps PCM); video as a sequence of images, compressed with spatial (within frame) and temporal (between frames) redundancy; CBR vs VBR coding.</li>
+<li><b>Streaming stored video:</b> UDP streaming (constant rate, loss and firewall problems), HTTP/TCP streaming with client buffering and playout delay, and <b>DASH</b>: video divided into chunks encoded at several bitrates; a manifest file lists the URLs; the client chooses the bitrate per chunk based on measured throughput and buffer.</li>
+<li><b>Voice-over-IP:</b> delay-sensitive, loss-tolerant; tolerable end-to-end delay below about 150 ms (400 ms upper limit); adaptive playout and forward error correction or interleaving to handle jitter and loss. Real-time protocols: RTP over UDP, SIP for signalling.</li>
+<li><b>CDNs</b> (Netflix, YouTube) place chunks in clusters near users, often inside ISPs (enter-deep) or at IXPs (bring-home).</li>
+</ul>
+<p><b>Worked example (playout buffer).</b> If a video arrives at rate r and plays at rate p &lt; r, the buffer fills at r - p; start-up delay (initial buffering) hides jitter. If r &lt; p the buffer empties and playback stalls (freezing).</p>
+
+<h2>11. Socket programming (K&amp;R 2.7)</h2>
+<h3>11.1 UDP (connectionless)</h3>
+<pre><code># client
+s = socket(AF_INET, SOCK_DGRAM)
+s.sendto(msg, (server_name, 12000))
+reply, addr = s.recvfrom(2048)
+
+# server
+s = socket(AF_INET, SOCK_DGRAM); s.bind(('', 12000))
+while True:
+    msg, client_addr = s.recvfrom(2048)
+    s.sendto(msg.upper(), client_addr)</code></pre>
+<h3>11.2 TCP (connection-oriented)</h3>
+<pre><code># server
+w = socket(AF_INET, SOCK_STREAM); w.bind(('', 12000)); w.listen(1)
+while True:
+    conn, addr = w.accept()        # new socket per client
+    data = conn.recv(1024)
+    conn.send(data.upper())
+    conn.close()
+
+# client
+s = socket(AF_INET, SOCK_STREAM)
+s.connect((server_name, 12000))    # three-way handshake
+s.send(msg); reply = s.recv(1024); s.close()</code></pre>
+<p>Key differences: UDP has no handshake, each datagram carries the destination, the server uses a single socket for all clients, data may be lost or reordered. TCP requires the server to run before clients connect, uses a welcoming socket plus a connection socket per client, and offers a reliable byte stream (no message boundaries, so applications must frame messages).</p>
+<div class="box warn"><b>Pitfalls.</b> A TCP <code>recv</code> may return fewer bytes than the sender wrote in one <code>send</code>. A UDP server must remember the client address from <code>recvfrom</code> to reply. Forgetting to close sockets leaks resources.</div>
+
+<h2>Quick revision</h2>
+<ul>
+<li>Edge = hosts + access networks; core = packet switches and links; packet switching uses statistical multiplexing and store-and-forward (N·L/R over N links).</li>
+<li>d<sub>nodal</sub> = proc + queue + trans (L/R) + prop (d/s); only queueing varies; ρ = La/R must stay below 1.</li>
+<li>Throughput = min of link rates (bottleneck); shared link gives R/N.</li>
+<li>Five layers: application, transport, network, link, physical; encapsulation adds headers; end-to-end principle.</li>
+<li>D_cs = max(NF/u_s, F/d_min); D_p2p = max(F/u_s, F/d_min, NF/(u_s + Σu)); BitTorrent: rarest first, tit-for-tat; DHT: closest successor.</li>
+<li>HTTP stateless over TCP; non-persistent 2 RTT per object; persistent with pipelining about 1 RTT for all objects; cookies add state.</li>
+<li>Caching: conditional GET with 304; expected delay = hit·d_hit + miss·d_miss; hit rate cuts access-link utilisation.</li>
+<li>DNS: hierarchy root/TLD/authoritative, UDP port 53, caching with TTL; records A, AAAA, NS, CNAME, MX; iterative vs recursive.</li>
+<li>SMTP pushes (HELO, MAIL FROM, RCPT TO, DATA, ".", QUIT); POP3 downloads; IMAP manages mail on the server.</li>
+<li>Streaming: DASH chunks at multiple bitrates chosen by the client; VoIP delay under about 150 ms; playout buffer hides jitter.</li>
+<li>Sockets: UDP uses sendto/recvfrom; TCP uses listen/accept/connect and a per-client connection socket.</li>
+</ul>
+</main></body></html>

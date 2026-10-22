@@ -1,0 +1,333 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quiz 2 — Transport Layer</title><link rel="stylesheet" href="../assets/style.css"></head><body><main><nav class="top"><a href="../index.html">← Home</a></nav><h1>Quiz 2 — Transport Layer</h1><div id="app"></div></main>
+<script>window.QUIZ={items:[
+ {
+  "q": "Two UDP clients on different hosts (different source IPs and source ports) both send datagrams to the same server IP address and destination port 5000. At the server, the datagrams are delivered to:",
+  "opts": [
+   "two different sockets, because UDP demultiplexing uses the full four-tuple",
+   "two different sockets, because the source IP addresses differ",
+   "the same UDP socket, because UDP demultiplexing uses only the destination IP address and destination port",
+   "no socket; the second datagram is dropped until the first is read"
+  ],
+  "ans": 2,
+  "why": "UDP sockets are identified by the two-tuple (destination IP, destination port). Source information is only passed up so the application can reply. The four-tuple is TCP's demultiplexing rule, which is the tempting wrong answer; differing source IPs matter only to TCP. UDP has no per-sender state, so nothing is dropped because of a 'busy' sender."
+ },
+ {
+  "q": "A web server listening on port 80 has three simultaneous TCP connections from the same client host, each from a different client port. How many sockets does the server process use for data transfer, and how does TCP demultiplex?",
+  "opts": [
+   "three connection sockets, selected by the four-tuple (source IP, source port, destination IP, destination port)",
+   "one socket, selected by destination port 80 alone",
+   "three sockets, selected by destination port alone",
+   "one socket per client host, selected by source IP alone"
+  ],
+  "ans": 0,
+  "why": "The listening socket only accepts SYNs; each accepted connection gets its own connection socket identified by the 4-tuple. Destination port alone (80) is identical for all three segments, so it cannot separate them. Source IP alone is identical here too, since all three come from one host."
+ },
+ {
+  "q": "A UDP header has a Length field containing 1000. How many bytes of application data does the datagram carry?",
+  "opts": [
+   "1000 bytes",
+   "1008 bytes",
+   "984 bytes",
+   "992 bytes"
+  ],
+  "ans": 3,
+  "why": "The UDP Length field counts header plus data, and the header is 8 bytes (source port, destination port, length, checksum, 2 bytes each). Data = 1000 - 8 = 992. 1000 forgets the header; 1008 adds instead of subtracting; 984 subtracts 16 (a double header)."
+ },
+ {
+  "q": "Compute the UDP/Internet checksum of the three 16-bit words 0110011001100000, 0101010101010101 and 1000111100001100.",
+  "opts": [
+   "0100101011000010",
+   "1011010100111101",
+   "1011010100111110",
+   "0100101011000001"
+  ],
+  "ans": 1,
+  "why": "Add: 0110011001100000 + 0101010101010101 = 1011101110110101; adding 1000111100001100 gives 1 0100101011000001, and wrapping the carry round gives 0100101011000010 (the sum). The checksum is its 1's complement, 1011010100111101. 0100101011000010 is the un-complemented sum; 0100101011000001 is the sum before wrapping the carry; 1011010100111110 is the complement of the unwrapped sum (off by one)."
+ },
+ {
+  "q": "Which application is the best fit for UDP rather than TCP?",
+  "opts": [
+   "A DNS query where the whole request and reply fit in one datagram and low latency matters",
+   "Transferring a large file where every byte must arrive intact and in order",
+   "Online banking over HTTPS",
+   "Sending e-mail with SMTP"
+  ],
+  "ans": 0,
+  "why": "UDP has no handshake, so a single request-reply costs one RTT and needs no connection state; if a reply is lost the application simply retries. File transfer, banking and SMTP need reliable in-order delivery, which UDP does not provide (the application would have to rebuild TCP)."
+ },
+ {
+  "q": "Which error will the Internet checksum fail to detect?",
+  "opts": [
+   "A single bit flipped anywhere in the segment",
+   "A burst of errors that changes the sum of the words",
+   "A change in the value of the pseudo-header destination address that alters the sum",
+   "Two 16-bit words in the segment being swapped with each other"
+  ],
+  "ans": 3,
+  "why": "The checksum is a sum, which is commutative, so swapping two 16-bit words leaves the sum unchanged and the error goes unnoticed. Any single-bit flip changes the sum and is detected; a burst that changes the sum is detected; and a pseudo-header change that alters the sum is detected too. (Link-layer CRC is stronger.)"
+ },
+ {
+  "q": "In rdt2.0 (stop-and-wait with ACK/NAK, no sequence numbers) the ACK or NAK itself can be corrupted. Why is rdt2.0 therefore broken, and what is the fix in rdt2.1?",
+  "opts": [
+   "The sender would never time out; add a retransmission timer",
+   "Packets could be reordered; add a cumulative ACK",
+   "The sender cannot tell whether to resend, and resending might deliver a duplicate; add a 1-bit sequence number so the receiver can discard duplicates",
+   "The receiver cannot detect corruption; add a checksum to the data packet"
+  ],
+  "ans": 2,
+  "why": "On a garbled ACK/NAK the sender must retransmit to be safe, but then the receiver cannot tell a retransmission from new data, so duplicates are delivered. Alternating 0/1 sequence numbers solve it. A timer is needed for loss (rdt3.0), not for corrupted feedback; reordering does not occur on this channel model; corruption detection of data already exists via the checksum."
+ },
+ {
+  "q": "A stop-and-wait sender uses L = 8000-bit packets on a 1 Gbps link with RTT = 30 ms. What is the sender utilisation (to two significant figures)?",
+  "opts": [
+   "about 27%",
+   "about 0.027% (0.00027)",
+   "about 100%",
+   "about 0.0000080"
+  ],
+  "ans": 1,
+  "why": "Transmission time D = 8000 / 10^9 = 8 µs. Utilisation = D / (RTT + D) = 0.008 ms / 30.008 ms = 0.000267, i.e. 0.027%. 0.0000080 is just D in seconds (8 µs), not a ratio; 27% is a decimal-place slip; 100% would hold only if propagation delay were zero."
+ },
+ {
+  "q": "On the same link (L = 8000 bits, R = 1 Gbps, RTT = 30 ms) a pipelined sender is allowed 3 unacknowledged packets. What is the utilisation, and about how many packets would be needed to reach 100%?",
+  "opts": [
+   "about 0.0027; about 375 packets",
+   "about 0.00027; 3 packets are already enough",
+   "about 0.0008; 30 packets",
+   "about 0.00080; roughly 3751 packets"
+  ],
+  "ans": 3,
+  "why": "Utilisation scales linearly with window N: 3 x 0.008 / 30.008 = 0.00080. To fill the pipe N ≈ (RTT + D)/D = 30.008 / 0.008 = 3751. Stating 0.0027 or 375 is a factor-of-ten slip; keeping 0.00027 ignores the pipelining gain; 30 packets would give only 0.8%."
+ },
+ {
+  "q": "Go-Back-N with window N = 4. The sender transmits packets 0, 1, 2, 3. Packet 1 is lost; 0, 2, 3 reach the receiver. After the timeout for packet 1, how many packets does the sender retransmit and what does the receiver do with packets 2 and 3 on first arrival?",
+  "opts": [
+   "It resends 1, 2 and 3 (three packets); the receiver discards 2 and 3 and re-ACKs 0",
+   "It resends only 1; the receiver buffers 2 and 3",
+   "It resends 0, 1, 2, 3; the receiver discards everything",
+   "It resends only 1; the receiver delivers 2 and 3 immediately to the application"
+  ],
+  "ans": 0,
+  "why": "GBN receivers accept only in-order packets and send a cumulative ACK for the last in-order packet (here 0). Packets 2 and 3 are out of order and are discarded. The timer expires for the oldest unacked packet (1) and the sender resends everything from 1 on. Resending only 1 and buffering is Selective Repeat. Packet 0 was ACKed, so it is not resent. Delivering 2 and 3 early would break in-order delivery."
+ },
+ {
+  "q": "A reliable protocol uses 3-bit sequence numbers (sequence space 0..7). What is the maximum window size for Selective Repeat so that the receiver cannot confuse a new packet with an old retransmission?",
+  "opts": [
+   "7",
+   "8",
+   "4",
+   "3"
+  ],
+  "ans": 2,
+  "why": "For SR the window must be at most half the sequence-number space: 8/2 = 4. A window of 7 is the Go-Back-N limit (2^k - 1) because GBN's receiver window is size 1. A window of 8 is never possible (ambiguity between a full new window and the old one). 3 is needlessly small and not the bound."
+ },
+ {
+  "q": "In Selective Repeat the receiver's window is [3..6] and packet 5 arrives intact. What happens?",
+  "opts": [
+   "Packet 5 is discarded and ACK 2 is repeated",
+   "Packet 5 is buffered and ACKed individually; nothing is delivered to the application yet",
+   "Packet 5 is delivered immediately to the application",
+   "Packet 5 is buffered but no ACK is sent until 3 and 4 arrive"
+  ],
+  "ans": 1,
+  "why": "SR ACKs every correctly received packet in the window and buffers out-of-order ones; delivery is in order, so 5 waits for 3 and 4. Discarding and repeating the last ACK is GBN behaviour; immediate delivery breaks ordering; withholding the ACK would trigger needless sender timeouts for 5."
+ },
+ {
+  "q": "A TCP sender sends three 500-byte segments with starting sequence numbers 1000, 1500 and 2000. The receiver has received the first two (bytes 1000-1999) and the third is delayed. What ACK number does the receiver send?",
+  "opts": [
+   "1999",
+   "1500",
+   "2500",
+   "2000"
+  ],
+  "ans": 3,
+  "why": "TCP ACK numbers are cumulative and name the NEXT byte expected. Bytes through 1999 arrived, so ACK = 2000. 1999 is the last byte received (off by one); 1500 would acknowledge only the first segment; 2500 would acknowledge the third segment, which has not arrived."
+ },
+ {
+  "q": "TCP has EstimatedRTT = 100 ms and DevRTT = 10 ms. A new sample SampleRTT = 120 ms arrives. With α = 0.125 and β = 0.25, what is the new TimeoutInterval?",
+  "opts": [
+   "102.5 ms",
+   "140 ms",
+   "152.5 ms",
+   "120 ms"
+  ],
+  "ans": 2,
+  "why": "DevRTT = 0.75 x 10 + 0.25 x |120 - 100| = 12.5 (using the OLD EstimatedRTT). EstimatedRTT = 0.875 x 100 + 0.125 x 120 = 102.5. Timeout = 102.5 + 4 x 12.5 = 152.5 ms. 102.5 is only the estimate (forgets the 4 x DevRTT safety margin); 140 uses the old estimate plus 4 x 10; 120 simply copies the sample."
+ },
+ {
+  "q": "Continuing from EstimatedRTT = 102.5 ms and DevRTT = 12.5 ms, the next sample is 80 ms. What is TimeoutInterval (to the nearest ms)?",
+  "opts": [
+   "160 ms",
+   "80 ms",
+   "100 ms",
+   "118 ms"
+  ],
+  "ans": 0,
+  "why": "DevRTT = 0.75 x 12.5 + 0.25 x |80 - 102.5| = 9.375 + 5.625 = 15.0. EstimatedRTT = 0.875 x 102.5 + 0.125 x 80 = 99.6875. Timeout = 99.6875 + 60 = 159.69, about 160 ms. Note it still sits well above the estimate because the deviation increased. 80 and 100 ignore the margin; 118 would need a much smaller deviation term."
+ },
+ {
+  "q": "Why does Karn's algorithm tell TCP not to take SampleRTT measurements from retransmitted segments?",
+  "opts": [
+   "Retransmitted segments are always sent with a larger window",
+   "An ACK for a retransmitted segment is ambiguous: it may acknowledge the original or the retransmission, so the sample could be wrong",
+   "SampleRTT is only defined for the SYN segment",
+   "The receiver does not ACK retransmitted segments"
+  ],
+  "ans": 1,
+  "why": "If a segment is sent twice and an ACK comes back, the sender cannot tell which transmission it answers, making the RTT sample unreliable (it could be far too small or too large). Karn's rule skips such samples (and backs off the timeout). The other options invent behaviour TCP does not have: the receiver does ACK retransmissions and SampleRTT is measured on data segments in general."
+ },
+ {
+  "q": "Receiver gets TCP segments 1, 2, 4, 5, 6 (segment 3 is lost). Under fast retransmit, when does the sender resend segment 3, without waiting for the timer?",
+  "opts": [
+   "As soon as the first duplicate ACK arrives (from segment 4)",
+   "Only after the retransmission timer expires",
+   "After receiving the ACK of segment 6",
+   "On receiving the third duplicate ACK for segment 3's sequence number (triggered by segments 4, 5, 6)"
+  ],
+  "ans": 3,
+  "why": "Segments 4, 5, 6 each trigger a duplicate ACK for the byte after segment 2. Three duplicate ACKs signal loss, so TCP retransmits immediately. One duplicate could just be reordering, which is why TCP waits for three. Waiting for the timer is the slow path fast retransmit avoids; segment 6 can never be cumulatively ACKed past the hole at 3."
+ },
+ {
+  "q": "A TCP receiver has RcvBuffer = 4096 bytes, LastByteRcvd = 3000 and LastByteRead = 1800. What receive window does it advertise?",
+  "opts": [
+   "1200 bytes",
+   "4096 bytes",
+   "2896 bytes",
+   "1800 bytes"
+  ],
+  "ans": 2,
+  "why": "rwnd = RcvBuffer - (LastByteRcvd - LastByteRead) = 4096 - 1200 = 2896. 1200 is the amount buffered, not free; 4096 would hold only for an empty buffer; 1800 is just LastByteRead. The sender keeps LastByteSent - LastByteAcked ≤ rwnd; if rwnd reaches 0 it sends 1-byte probes so it learns when space reopens."
+ },
+ {
+  "q": "A TCP connection has a fixed window of 65535 bytes (no window scaling) and RTT = 50 ms on a very fast link. What is the maximum throughput?",
+  "opts": [
+   "about 10.5 Mbps",
+   "about 1.3 Mbps",
+   "about 65.5 Mbps",
+   "about 10.5 Gbps"
+  ],
+  "ans": 0,
+  "why": "At most one window per RTT: 65535 x 8 bits / 0.05 s = 10.49 Mbps, regardless of link speed. 1.3 Mbps divides by 8 twice; 65.5 Mbps uses RTT = 8 ms by mistake; 10.5 Gbps is a unit slip. This is why the window-scale option exists for long fat networks."
+ },
+ {
+  "q": "TCP three-way handshake: client picks ISN = 400, server picks ISN = 900. What are the seq and ack fields of the client's third segment (the ACK)?",
+  "opts": [
+   "seq = 400, ack = 900",
+   "seq = 401, ack = 901",
+   "seq = 401, ack = 900",
+   "seq = 901, ack = 401"
+  ],
+  "ans": 1,
+  "why": "SYN and SYN-ACK each consume one sequence number. The server's SYN-ACK has seq = 900, ack = 401. The client's ACK therefore has seq = 401 (its next byte) and ack = 901 (server ISN + 1). Using 400/900 forgets that SYN consumes a number; 401/900 forgets it for the server's SYN; 901/401 swaps the fields."
+ },
+ {
+  "q": "Why does the side that performs the active close in TCP stay in TIME_WAIT for about 2 MSL before fully closing?",
+  "opts": [
+   "To wait for the application to read remaining buffered data",
+   "To complete the three-way handshake",
+   "To retransmit the final ACK if it is lost and to let old duplicate segments of the connection die out",
+   "To free the port immediately for another connection"
+  ],
+  "ans": 2,
+  "why": "If the last ACK is lost, the peer retransmits its FIN and needs a response; TIME_WAIT keeps state to re-ACK it. It also ensures stray delayed segments cannot be mistaken for a new connection on the same 4-tuple. Buffered data is dealt with before closing; the handshake is for opening; TIME_WAIT delays, rather than speeds up, port reuse."
+ },
+ {
+  "q": "Which mechanism defends a server against a SYN flood by not allocating connection state until the final ACK of the handshake arrives?",
+  "opts": [
+   "Increasing the receive window",
+   "Using Nagle's algorithm",
+   "Fast retransmit",
+   "SYN cookies, which encode the connection information in the server's ISN"
+  ],
+  "ans": 3,
+  "why": "In a SYN flood the attacker sends many SYNs and never completes the handshake, exhausting half-open connection slots. SYN cookies put a hash of the connection parameters in the SYN-ACK's sequence number and only create state when a valid ACK returns. The receive window, Nagle's algorithm (small-packet coalescing) and fast retransmit (loss recovery) are unrelated to handshake state."
+ },
+ {
+  "q": "TCP Reno (slow start from cwnd = 1 MSS, ssthresh = 16 MSS, +1 MSS per RTT in congestion avoidance) experiences a timeout during the round where cwnd = 19 MSS. What are ssthresh and cwnd for the round after the timeout, and what is cwnd in the 5th round after it (counting the post-timeout round as round 1)?",
+  "opts": [
+   "ssthresh = 9; cwnd = 9 straight away, then 10, 11, ...",
+   "ssthresh = 9, cwnd restarts at 1; in the 5th round cwnd = 9 (1, 2, 4, 8, then capped at ssthresh 9)",
+   "ssthresh = 10, cwnd restarts at 1; in the 5th round cwnd = 16",
+   "ssthresh = 19, cwnd = 1; in the 5th round cwnd = 16"
+  ],
+  "ans": 1,
+  "why": "On timeout ssthresh = floor(cwnd/2) = floor(19/2) = 9 and cwnd = 1 (slow start). Rounds 1..5 post-timeout: 1, 2, 4, 8, then doubling would give 16 but it is capped at ssthresh = 9. Jumping directly to 9 is closer to what Reno does after a triple duplicate ACK (fast recovery), not a timeout. ssthresh = 10 rounds up; ssthresh stays 19 or cwnd = 16 ignores the new threshold."
+ },
+ {
+  "q": "TCP Reno detects loss by three duplicate ACKs while cwnd = 20 MSS. What are ssthresh and cwnd immediately after entering fast recovery?",
+  "opts": [
+   "ssthresh = 10, cwnd = 13 (ssthresh + 3 MSS)",
+   "ssthresh = 10, cwnd = 1",
+   "ssthresh = 20, cwnd = 10",
+   "ssthresh = 13, cwnd = 10"
+  ],
+  "ans": 0,
+  "why": "Reno halves: ssthresh = 20/2 = 10, then inflates cwnd = ssthresh + 3 MSS = 13 for the three segments that left the network. cwnd = 1 is Tahoe's response (and Reno's on a timeout). The other pairs do not follow the halving-plus-3 rule. After new data is ACKed, cwnd deflates to ssthresh and AIMD continues."
+ },
+ {
+  "q": "Compared with TCP Reno, how does TCP Tahoe react to a loss detected by three duplicate ACKs?",
+  "opts": [
+   "It halves cwnd and continues in congestion avoidance",
+   "It ignores duplicate ACKs and waits for the timer",
+   "It doubles cwnd to probe for bandwidth",
+   "It sets ssthresh = cwnd/2 and cwnd = 1 MSS, going back to slow start, with no fast recovery"
+  ],
+  "ans": 3,
+  "why": "Tahoe treats every loss as a timeout: ssthresh = cwnd/2, cwnd = 1, slow start. Halving cwnd and staying in congestion avoidance is the later Reno/fast-recovery refinement (the tempting wrong answer); ignoring dupACKs is what pre-fast-retransmit TCP did; doubling is the opposite of a congestion response."
+ },
+ {
+  "q": "A TCP Reno connection has MSS = 1460 bytes, RTT = 100 ms and loss rate L = 10^-4. Using the steady-state formula, what is the average throughput?",
+  "opts": [
+   "about 1.42 Mbps",
+   "about 142 Mbps",
+   "about 14.2 Mbps",
+   "about 0.14 Mbps"
+  ],
+  "ans": 2,
+  "why": "Throughput = 1.22 x MSS / (RTT x √L) = 1.22 x 11680 bits / (0.1 x 0.01) = 14,250,000 bps ≈ 14.2 Mbps. √(10^-4) = 10^-2; using L directly gives a 100x error, and the other options are decimal slips."
+ },
+ {
+  "q": "Using the TCP throughput formula 1.22 x MSS / (RTT x √L), a connection with MSS = 1500 bytes and RTT = 100 ms should fill a 10 Gbps link. What loss rate would be required?",
+  "opts": [
+   "about 2 x 10^-5",
+   "about 2 x 10^-10",
+   "about 1.4 x 10^-5",
+   "about 10^-3"
+  ],
+  "ans": 1,
+  "why": "Solve √L = 1.22 x MSS / (RTT x R) = 1.22 x 12000 / (0.1 x 10^10) = 1.464 x 10^-5, so L = (1.464 x 10^-5)^2 ≈ 2.1 x 10^-10. 1.4 x 10^-5 is √L, not L, a classic slip. The result shows why new high-speed TCP variants are needed: one loss in about 5 billion packets is unrealistic. (Equivalent window: about 83,333 segments.)"
+ },
+ {
+  "q": "A bottleneck link of R = 10 Mbps is shared by 1 TCP connection from host A and 9 connections opened in parallel by host B. Assuming ideal TCP fairness per connection, what does host B get in total?",
+  "opts": [
+   "9 Mbps",
+   "5 Mbps",
+   "1 Mbps",
+   "10 Mbps"
+  ],
+  "ans": 0,
+  "why": "TCP fairness is per connection, not per host: 10 connections each get R/10 = 1 Mbps, so B's 9 connections get 9 Mbps and A gets 1 Mbps. 5 Mbps would be per-host fairness, which TCP does not enforce; 1 Mbps is a single connection's share; 10 Mbps would leave nothing for A. This is why applications that open many parallel connections get an unfair share."
+ },
+ {
+  "q": "Which statement correctly describes how QUIC differs from TCP + TLS over TCP?",
+  "opts": [
+   "QUIC is built directly on IP as a new protocol number and replaces UDP in the kernel",
+   "QUIC uses a separate handshake for TCP and then another for TLS, but compresses headers",
+   "QUIC removes congestion control, since UDP has none",
+   "QUIC runs over UDP in user space, combines transport and TLS 1.3 handshakes (1 RTT, 0-RTT on resumption), and multiplexes independent streams so one lost packet does not block the others"
+  ],
+  "ans": 3,
+  "why": "QUIC (used by HTTP/3) is implemented over UDP so it can be deployed without changing middleboxes and OS kernels, integrates the crypto handshake, uses connection IDs (survives IP changes) and per-stream delivery, eliminating TCP's transport-level head-of-line blocking. It is not a new IP protocol; it does not need two handshakes; and it implements its own congestion control and loss recovery."
+ },
+ {
+  "q": "A high-speed, long-delay network repeatedly under-uses its bandwidth with loss-based Reno because small random losses keep halving cwnd. Which approach models the bottleneck bandwidth and minimum RTT to set its sending rate instead of reacting to loss?",
+  "opts": [
+   "TCP Tahoe",
+   "Stop-and-wait with a fixed timeout",
+   "BBR",
+   "Go-Back-N with a larger window"
+  ],
+  "ans": 2,
+  "why": "BBR estimates bottleneck bandwidth and round-trip propagation delay and paces to that operating point (about BDP in flight), so random loss does not collapse its rate. Tahoe is the most loss-sensitive scheme; stop-and-wait and GBN are reliability schemes (not congestion control) and do not address reading the available bandwidth."
+ }
+]};</script><script src="../assets/quiz.js"></script></body></html>

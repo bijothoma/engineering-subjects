@@ -1,0 +1,186 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Network Layer</title><link rel="stylesheet" href="../../assets/style.css"></head><body><main><nav class="top"><a href="../../index.html">← Home</a></nav>
+<h1>Network Layer</h1>
+<p class="sub">Weeks 9-10 · Kurose &amp; Ross (6/e) Ch. 4, and the later-edition split into Ch. 4 (data plane) and Ch. 5 (control plane) · Peterson-Davie Ch. 3-4 · Tanenbaum Ch. 5</p>
+
+<h2>1. Network layer services and the two planes</h2>
+<div class="box"><b>Definition.</b> The network layer moves a segment from the sending host to the receiving host, hop by hop through routers. Two functions: <b>forwarding</b> (data plane: move a packet from a router's input link to the right output link, nanosecond-scale, in hardware) and <b>routing</b> (control plane: compute the end-to-end path and fill the forwarding tables, seconds-scale, in software).</div>
+<ul>
+<li><b>Per-router control plane</b>: every router runs a routing algorithm and talks to its neighbours (traditional). <b>Logically centralised (SDN)</b>: a remote controller computes tables and installs them in routers.</li>
+<li><b>Service model of the Internet</b>: <i>best effort</i>: no guarantee of delivery, order, bounded delay or minimum bandwidth. (ATM CBR/ABR offered guarantees; they lost.) Simplicity at the core, intelligence at the edge.</li>
+<li><b>Datagram network</b> (Internet): forwarding by destination address, no per-flow state in routers. <b>Virtual-circuit network</b> (ATM, MPLS-like, frame relay): call setup, a VC number on each link that is swapped at every router; router keeps per-connection state. A VC table is small; a datagram table needs longest-prefix matching.</li>
+<li>ICMP (carried in IP) reports errors: destination unreachable, time exceeded (TTL hit 0), echo. <code>traceroute</code> sends probes with TTL = 1, 2, 3 ... and reads the "time exceeded" replies.</li>
+</ul>
+
+<h2>2. Router architecture</h2>
+<p>Four parts: <b>input ports</b> (physical termination, link-layer, then lookup in a local copy of the forwarding table), <b>switching fabric</b>, <b>output ports</b> (buffer, scheduler, link transmit), and the <b>routing processor</b> (control plane: runs routing protocols, computes and installs tables, management).</p>
+<table><tr><th>Fabric</th><th>Idea</th><th>Limit</th></tr>
+<tr><td>Memory</td><td>Packet copied to RAM then out (first-generation, CPU-switched)</td><td>Two bus crossings per packet; throughput ≤ memory bandwidth / 2</td></tr>
+<tr><td>Bus</td><td>Input to output over one shared bus</td><td>One packet at a time; bus rate must be ≥ N × line rate to avoid input queuing</td></tr>
+<tr><td>Crossbar / interconnection network</td><td>2N buses; crosspoints close to connect input i to output j</td><td>Parallel transfers if destinations differ; still head-of-line blocking if two inputs want the same output</td></tr></table>
+<h3>Queuing</h3>
+<ul>
+<li><b>Input queuing</b>: if the fabric is slower than the sum of input rates, packets queue at input. <b>Head-of-line (HOL) blocking</b>: the packet at the front is waiting for a busy output and blocks packets behind it that want idle outputs.</li>
+<li><b>Output queuing</b>: arrival rate to one output can exceed the line rate (fabric faster than the line). Buffer overflow means packet loss, which is where Internet loss mostly happens. A <b>scheduler</b> (FIFO, priority, round robin, WFQ) picks the next packet; a <b>drop policy</b> (tail drop, RED) picks the victim.</li>
+<li><b>Buffer sizing</b>: classic rule B = RTT × C. Recent rule for N long-lived flows: B = RTT × C / √N. Example: RTT = 250 ms, C = 10 Gbps, N = 10,000: RTT·C = 2.5 Gbit, divided by √N = 100 gives 25 Mbit.</li>
+</ul>
+<div class="box warn"><b>Pitfall.</b> Longest-prefix matching is done at the input port (by TCAM in hardware), not by the routing processor. The routing processor only builds the table.</div>
+
+<h2>3. IPv4</h2>
+<pre><code>| ver(4) | IHL(4) | ToS(8) |          total length (16)          |
+|        identification (16)    | 0 | DF | MF | frag offset (13)  |
+|  TTL (8)  | protocol (8)       |        header checksum (16)       |
+|                       source IP (32)                              |
+|                    destination IP (32)                            |
+|                    options (if any) ...                           |
+|                    payload (TCP/UDP segment)                      |</code></pre>
+<ul>
+<li><b>IHL</b> counts 32-bit words: min 5 = 20 bytes; value 7 = 28 bytes (8 bytes of options). Max 15 = 60 bytes.</li>
+<li>Protocol: 6 = TCP, 17 = UDP, 1 = ICMP, 89 = OSPF, 41 = IPv6-in-IPv4. TTL is decremented at each router; at 0 the packet is dropped and ICMP time-exceeded returned. Header checksum is recomputed at each hop (TTL changes).</li>
+</ul>
+<h3>Fragmentation</h3>
+<p>Each link has an MTU. A router fragments a datagram bigger than the outgoing MTU; <b>only the destination host reassembles</b>. All fragments share the identification; MF = 1 on all but the last; the offset is in <b>units of 8 bytes</b>, so every fragment except the last carries a data length that is a multiple of 8.</p>
+<div class="box key"><b>Worked example.</b> 4000-byte datagram (20 header + 3980 data), MTU 1500. Max data per fragment = 1480 (multiple of 8). Fragments: (1500 B, offset 0, MF=1), (1500 B, offset 1480/8 = 185, MF=1), (1040 B = 20 + 1020, offset 2960/8 = 370, MF=0).</div>
+<div class="box warn"><b>Pitfall.</b> Forgetting to subtract the 20-byte header (data per fragment is 1480 not 1500), and writing the offset in bytes instead of 8-byte units. IPv6 forbids fragmentation by routers; hosts use Path MTU Discovery.</div>
+
+<h2>4. IPv4 addressing, subnetting, CIDR</h2>
+<p>An address is 32 bits, written as four decimal bytes. An <b>interface</b> (not a host) has an address. A <b>subnet</b> is a set of interfaces that can reach each other without a router; the high-order bits are the common prefix. <b>CIDR</b> (RFC 4632) writes a network as <code>a.b.c.d/x</code>: the first x bits are the network prefix and the remaining 32-x are host bits. Classful A/B/C boundaries are obsolete.</p>
+<ul>
+<li>Addresses in /x block: 2<sup>32-x</sup>; usable hosts 2<sup>32-x</sup> - 2 (all-zeros host = network address, all-ones host = directed broadcast). 255.255.255.255 is the limited broadcast.</li>
+<li>Mask 255.255.255.192 = 11111111.11111111.11111111.11000000 = /26. Block size in the last octet = 256 - 192 = 64.</li>
+<li>Private ranges (RFC 1918): 10/8, 172.16/12, 192.168/16. Loopback 127/8. Multicast 224/4.</li>
+</ul>
+<h3>Procedure (subnet of an address)</h3>
+<pre><code>network   = address AND mask
+broadcast = network OR (NOT mask)
+hosts     = network+1 .. broadcast-1      (2^(32-x) - 2 of them)</code></pre>
+<div class="box key"><b>Worked example 1.</b> 192.168.10.77/26: block size 64, 77 lies in [64,127]. Network 192.168.10.64, broadcast 192.168.10.127, usable 65..126 = 62 hosts.<br>
+<b>Worked example 2.</b> 130.50.15.6/20: third octet 15 = 00001111, mask keeps the top 4 bits (0000) so network = 130.50.0.0, broadcast = 130.50.15.255.<br>
+<b>Worked example 3.</b> 172.16.0.0/16 with mask 255.255.252.0 (/22): 6 extra bits give 2<sup>6</sup> = 64 subnets, each with 2<sup>10</sup> - 2 = 1022 hosts.</div>
+<h3>VLSM and aggregation</h3>
+<p><b>VLSM</b>: different subnets get different prefix lengths. Method: sort requirements largest first, give each the smallest block 2<sup>k</sup> ≥ hosts + 2, align on its size. For 192.168.1.0/24 with 100, 50, 25 hosts: 100 needs /25 (126), 50 needs /26 (62), 25 needs /27 (30). Allocation 192.168.1.0/25, 192.168.1.128/26, 192.168.1.192/27 (no overlap; 192.168.1.224/27 is spare).</p>
+<p><b>Route aggregation</b> (supernetting): advertise one shorter prefix for many contiguous, aligned blocks. 192.168.0.0/24 .. 192.168.3.0/24 aggregate to 192.168.0.0/22. The blocks 172.16.4.0/24, .5, .6 need 172.16.4.0/22, which also covers 172.16.7.0/24; the aggregate is only exact for a power-of-two count of aligned blocks.</p>
+<div class="box warn"><b>Pitfall.</b> The prefix must be aligned: 172.16.6.0/22 is not a valid network address (it would be 172.16.4.0/22). Do not mix the "2 reserved addresses" rule into the number of subnets with CIDR (all subnets usable).</div>
+
+<h2>5. Forwarding and longest-prefix match</h2>
+<p>Forwarding table maps prefixes to output interfaces (and next hop). The router picks the entry with the <b>longest</b> matching prefix; the default route is 0.0.0.0/0.</p>
+<pre><code>forward(dest):
+  best = none
+  for each entry (prefix, len, port) in table:
+      if (dest AND mask(len)) == prefix and (best is none or len &gt; best.len):
+          best = entry
+  return best.port        // default route (len 0) matches everything
+</code></pre>
+<p>Naive scan is O(entries); binary trie lookup is O(32) (O(W) for W-bit addresses); hardware uses TCAM (one-cycle parallel match). </p>
+<div class="box key"><b>Worked example.</b> Table: 10.0.0.0/8 → A, 10.1.0.0/16 → B, 10.1.2.0/24 → C, 10.1.2.64/26 → D, default → E.<br>
+10.1.2.77 matches /8, /16, /24 and /26 (77 in 64..127) → D. 10.1.2.200 matches up to /24 → C. 10.1.9.9 → B. 10.200.1.1 → A. 11.0.0.1 → E (default).</div>
+<p>Generalised forwarding (SDN) matches on many header fields, not only the destination.</p>
+
+<h2>6. DHCP</h2>
+<p>Dynamic Host Configuration Protocol (UDP, server port 67, client port 68) gives a host an IP address, subnet mask, first-hop router and DNS server automatically; the address is leased for a time and renewed. Plug-and-play; a DHCP relay agent lets one server serve many subnets.</p>
+<pre><code>1. DHCP DISCOVER  client -&gt; 255.255.255.255:67, src 0.0.0.0
+2. DHCP OFFER     server -&gt; client (broadcast): yiaddr, mask, lease
+3. DHCP REQUEST   client -&gt; broadcast: accepts one offer
+4. DHCP ACK       server -&gt; client: confirms; client may use the address</code></pre>
+<p>Step 3 is broadcast so that other servers learn their offers were not taken.</p>
+
+<h2>7. NAT</h2>
+<p>A NAT router gives a whole private network (e.g. 10.0.0.0/24) one public address. <b>Outbound</b>: replace (private IP, port) by (public IP, new port) and record in the NAT translation table. <b>Inbound</b>: look up the destination port in the table and rewrite back.</p>
+<div class="box key"><b>Example.</b> Host 10.0.0.1:3345 sends to 128.119.40.186:80. NAT (public 138.76.29.7) rewrites the source to 138.76.29.7:5001 and stores {5001 ↔ 10.0.0.1:3345}. Reply to 138.76.29.7:5001 is rewritten to 10.0.0.1:3345. The 16-bit port field allows about 2<sup>16</sup> = 65,536 (≈64k) simultaneous connections per public address.</div>
+<div class="box warn"><b>Controversy.</b> Ports are for processes, not hosts; routers should not look above the network layer; it violates the end-to-end argument and blocks inbound connections to servers behind it (needs static port mapping, UPnP or NAT traversal). IPv6 removes the need for NAT.</div>
+
+<h2>8. Software-Defined Networking, OpenFlow, P4</h2>
+<ul>
+<li><b>SDN</b>: control plane is separated from the data plane; a logically centralised <b>controller</b> (with a network-control application on top) talks to switches over a <b>southbound</b> API such as OpenFlow, and to applications over a northbound API.</li>
+<li><b>OpenFlow match-plus-action</b>: each flow-table entry has header fields to match (link, network and transport layer: MAC, IP, ports, VLAN...), counters, and actions: forward, drop, modify field, send to controller. One abstraction unifies router, switch, firewall and NAT. Messages: controller-to-switch (features, configure, modify-state, packet-out), asynchronous (packet-in, flow-removed, port-status), symmetric (hello, echo).</li>
+<li><b>P4</b>: a language to program <i>how the data plane processes packets</i>: define the headers to parse, the match-action tables and the control flow of the pipeline; protocol independent, target independent (compiled for the switch ASIC/NIC/software switch). OpenFlow fixes the header fields; P4 lets you define them.</li>
+</ul>
+
+<h2>9. Routing: link state and distance vector</h2>
+<p>Network = graph with link costs c(u,v). Goal: least-cost path from each router to every other. <b>Global (link state)</b>: everyone knows the whole graph. <b>Decentralised (distance vector)</b>: iterative exchange with neighbours.</p>
+<h3>9.1 Link-state: Dijkstra</h3>
+<p>Each router floods its link costs (link-state broadcast); then each router runs Dijkstra locally.</p>
+<pre><code>Dijkstra(source u):
+  N' = {u}
+  for all v: D(v) = c(u,v) if adjacent else INF ; p(v) = u
+  D(u) = 0
+  repeat until N' = all nodes:
+      pick w not in N' with minimum D(w); add w to N'
+      for each neighbour v of w not in N':
+          if D(w) + c(w,v) &lt; D(v): D(v) = D(w) + c(w,v); p(v) = w
+</code></pre>
+<p><b>Correctness idea</b>: when w is moved into N', D(w) is the true shortest distance, because any other path must leave N' through some node whose tentative distance is ≥ D(w) and costs are non-negative. <b>Complexity</b>: n nodes, linear scan: n + (n-1) + ... = n(n+1)/2 = O(n<sup>2</sup>); binary heap: O(E log n). Message complexity of flooding: O(nE) messages. Oscillation can occur if link cost depends on load.</p>
+<div class="box key"><b>Worked example.</b> Graph: u-v 2, u-x 1, u-w 5, v-x 2, v-w 3, x-w 3, x-y 1, w-y 1, w-z 5, y-z 2. From u:<br>
+<table><tr><th>Step</th><th>N'</th><th>D(v),p</th><th>D(w),p</th><th>D(x),p</th><th>D(y),p</th><th>D(z),p</th></tr>
+<tr><td>0</td><td>u</td><td>2,u</td><td>5,u</td><td>1,u</td><td>INF</td><td>INF</td></tr>
+<tr><td>1</td><td>ux</td><td>2,u</td><td>4,x</td><td>1</td><td>2,x</td><td>INF</td></tr>
+<tr><td>2</td><td>uxv</td><td>2</td><td>4,x</td><td></td><td>2,x</td><td>INF</td></tr>
+<tr><td>3</td><td>uxvy</td><td></td><td>3,y</td><td></td><td>2</td><td>4,y</td></tr>
+<tr><td>4</td><td>uxvyw</td><td></td><td>3</td><td></td><td></td><td>4,y</td></tr>
+<tr><td>5</td><td>all</td><td></td><td></td><td></td><td></td><td>4</td></tr></table>
+Shortest path u to z: u-x-y-z, cost 4. u's forwarding table: v via link (u,v); x, y, w, z via link (u,x). (v and y tie at cost 2; either order gives the same final result.)</div>
+<h3>9.2 Distance vector: Bellman-Ford</h3>
+<p>Bellman-Ford equation: <code>D<sub>x</sub>(y) = min over neighbours v of { c(x,v) + D<sub>v</sub>(y) }</code>. Each node keeps its own vector and its neighbours' vectors; whenever its own vector changes it sends it to neighbours. Asynchronous, iterative, self-terminating.</p>
+<pre><code>Bellman-Ford(source s):
+  D(s)=0; D(v)=INF otherwise
+  repeat |V|-1 times:
+      for each edge (a,b,c): if D(a)+c &lt; D(b): D(b)=D(a)+c   (and the reverse for undirected)
+</code></pre>
+<p>After round k the values are correct for all nodes whose shortest path has ≤ k edges. Complexity O(VE). In DV each round-trip costs O(degree) per node; convergence time varies.</p>
+<div class="box key"><b>Worked examples.</b><br>
+(a) x has neighbours y (cost 2), z (cost 7), v (cost 3). They report D<sub>y</sub>(w)=4, D<sub>z</sub>(w)=1, D<sub>v</sub>(w)=5. D<sub>x</sub>(w) = min(2+4, 7+1, 3+5) = 6, next hop y.<br>
+(b) Edges A-B 4, A-C 1, C-B 2, B-D 1, C-D 5; source A. Round 1: B=4, C=1. Round 2: B=3, D=5. Round 3: D=4 (path A-C-B-D has 3 edges). Stable after round 3.</div>
+<h3>Problems of distance vector</h3>
+<ul>
+<li><b>Good news travels fast, bad news slowly</b>: count-to-infinity. With x-y 4, y-z 1, z-x 50: if cost(y,x) rises from 4 to 60, y switches to z (1 + D<sub>z</sub>(x) = 1 + 5 = 6) not knowing z's path goes through y. y and z bounce the packet, increasing costs by 1 each round, until reaching 50 (via the direct z-x link).</li>
+<li><b>Poisoned reverse</b>: if z routes to x via y, z advertises D<sub>z</sub>(x) = INF to y. Stops two-node loops but not loops among three or more nodes. Practical protocols also cap infinity (RIP: 16 = unreachable).</li>
+</ul>
+<table><tr><th></th><th>Link state</th><th>Distance vector</th></tr>
+<tr><td>Messages</td><td>O(nE) to flood; each router knows full map</td><td>Neighbours only; varies in time</td></tr>
+<tr><td>Convergence</td><td>O(n<sup>2</sup>) algorithm; may oscillate</td><td>Slow; loops, count-to-infinity</td></tr>
+<tr><td>Robustness</td><td>Router computes its own table, limited error spread</td><td>Wrong advertisements spread through the network</td></tr></table>
+
+<h2>10. Routing in the Internet: autonomous systems</h2>
+<p>Scale and administrative autonomy are handled by grouping routers into <b>autonomous systems (AS)</b>, each with an AS number. <b>Intra-AS</b> protocols (IGPs): RIP, OSPF, EIGRP, IS-IS. <b>Inter-AS</b>: BGP. Intra-AS focuses on performance; inter-AS also on policy. Forwarding table = intra-AS entries plus inter-AS entries for external prefixes.</p>
+<h3>RIP and OSPF</h3>
+<ul>
+<li><b>RIP</b>: distance vector, cost = hop count, max 15 (16 = infinity), advertisements every 30 s, over UDP (port 520).</li>
+<li><b>OSPF</b>: link-state; flooding of link-state advertisements to the entire AS; Dijkstra on each router; costs set by administrator; messages carried directly over IP (protocol 89); authentication; multiple equal-cost paths; hierarchical with <b>areas</b> (a backbone area 0 and area border routers) to limit flooding.</li>
+</ul>
+<h3>BGP (path vector)</h3>
+<ul>
+<li>Pairs of routers exchange routes over semi-permanent <b>TCP</b> connections (port 179): <b>eBGP</b> between ASes, <b>iBGP</b> within an AS. A route = prefix + attributes: <b>AS-PATH</b> (list of ASes the advert traversed, also loop prevention), <b>NEXT-HOP</b>, LOCAL-PREF (policy), etc.</li>
+<li><b>Route selection</b> (in order): 1. highest LOCAL-PREF (policy); 2. shortest AS-PATH; 3. closest NEXT-HOP router (<b>hot-potato routing</b>: use the intra-AS least-cost path to leave the AS ASAP); 4. further tie-breakers (BGP identifiers).</li>
+<li>Policy: an ISP exports routes to customers broadly but does not transit traffic between two providers; a stub network advertises only its own prefixes.</li>
+</ul>
+<div class="box key"><b>Example.</b> Router sees route R1 (LOCAL-PREF 100, AS-PATH length 2) and R2 (LOCAL-PREF 200, AS-PATH length 5). R2 wins: policy precedes path length.</div>
+<div class="box warn"><b>Pitfall.</b> Hot-potato routing is the third rule, not the first; and BGP is a path-vector protocol (it carries the path, not just a distance) running over TCP, whereas OSPF runs straight over IP.</div>
+
+<h2>11. IPv6</h2>
+<ul>
+<li>128-bit addresses (2<sup>128</sup> ≈ 3.4 × 10<sup>38</sup>); written as 8 groups of 4 hex digits. Leading zeros in a group may be dropped and <b>one</b> run of all-zero groups replaced by "::" (only once): 2001:0db8:0000:0000:0000:ff00:0042:8329 = 2001:db8::ff00:42:8329. Trailing zeros inside a group (ff00) cannot be removed.</li>
+<li><b>Fixed 40-byte header</b>: version, traffic class, flow label (20 bits), payload length, next header, hop limit, source, destination. No header checksum (speed), no options in the base header (extension headers via next header), <b>no fragmentation in routers</b> (source fragments; ICMPv6 "packet too big"). ICMPv6 absorbs neighbour discovery and group management.</li>
+<li><b>Transition</b>: dual stack; <b>tunneling</b>: the IPv6 datagram is carried as the payload of an IPv4 datagram (protocol 41) between two IPv6 routers across an IPv4-only region, then decapsulated.</li>
+</ul>
+
+<h2>12. Multicast routing</h2>
+<p>One sender, many receivers, one copy per link. IPv4 class D range 224.0.0.0/4 (2<sup>28</sup> = 268,435,456 group addresses). Hosts join through <b>IGMP</b> (host to its local router: membership query / report / leave); routers build multicast trees with a multicast routing protocol (e.g. DVMRP, PIM).</p>
+<ul>
+<li><b>Source-based tree</b>: one tree per source (least-cost path tree). <b>Group-shared tree</b>: one tree per group (centre-based / rendezvous point).</li>
+<li><b>Reverse path forwarding (RPF)</b>: on receiving a multicast datagram from source S on interface i, forward it on all other interfaces <i>only if</i> i is on the router's shortest unicast path back to S; otherwise drop. Avoids loops without per-packet state. Then <b>pruning</b> removes branches with no members.</li>
+<li>PIM dense mode floods-and-prunes; PIM sparse mode builds trees explicitly towards a rendezvous point on join.</li>
+</ul>
+
+<h2>Quick revision</h2>
+<ul>
+<li>Forwarding (data plane, per packet) vs routing (control plane); Internet service is best effort.</li>
+<li>Router = input ports + fabric (memory/bus/crossbar) + output ports + routing processor. HOL blocking at inputs; losses at output buffers; B = RTT·C/√N.</li>
+<li>IPv4 header 20 B min, IHL in 32-bit words, fragment offset in 8-byte units, reassembly only at destination.</li>
+<li>Subnet: network = addr AND mask; /x gives 2<sup>32-x</sup> addresses, minus 2 usable. VLSM: largest first, aligned blocks. Aggregation needs contiguous aligned blocks.</li>
+<li>Forwarding = longest-prefix match; default route 0.0.0.0/0.</li>
+<li>DHCP: Discover, Offer, Request, ACK (UDP 67/68). NAT: port-number translation table, ~64k connections.</li>
+<li>SDN: control plane separated; OpenFlow = match + action; P4 programs the data plane.</li>
+<li>Dijkstra O(n<sup>2</sup>) (O(E log n) with heap); Bellman-Ford O(VE); DV: Dx(y) = min c(x,v)+Dv(y); count-to-infinity, poisoned reverse (two-node loops only).</li>
+<li>RIP (UDP, hops, 15 max), OSPF (IP proto 89, link state, areas), BGP (TCP 179, path vector; LOCAL-PREF, AS-PATH, hot potato).</li>
+<li>IPv6: 128-bit, 40-byte fixed header, no checksum, no router fragmentation, tunneling; multicast: IGMP + RPF + trees.</li>
+</ul>
+</main></body></html>
